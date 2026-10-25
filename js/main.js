@@ -1,7 +1,47 @@
 /* ============ 游戏核心：状态机 / 战斗 / 交互 / 主循环 ============ */
-const HINT_DEFAULT = '点击英雄查看技能与射程　|　左键拖拽旋转视角　|　右键平移　|　滚轮缩放　|　空格：下一波　Esc：取消';
+const HINT_DEFAULT = '点击英雄查看技能与射程　|　1-4：英雄群攻技能　|　左键拖拽旋转视角　|　右键平移　|　滚轮缩放　|　空格：下一波　Esc：取消';
 const SLOW_TINT = new THREE.Color(0x9fd4ff);   // 减速冰蓝染色
 const POISON_COLOR = 0x7ed957;                 // 毒箭毒雾/状态图标（区别于暗言术紫）
+
+/* 运行时画一把 32×32 剑生成光标（PNG data URI，各浏览器通用；热点在剑尖，落点与系统箭头一致） */
+function makeSwordCursor() {
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = 32;
+  const g = cv.getContext('2d');
+  g.lineJoin = 'round'; g.lineCap = 'round';
+  const DARK = 'rgba(38,24,12,0.92)';
+
+  // 剑刃路径：剑尖 (3.5,3.5) 朝左上，刃基在 (19.5,19.5)，刃宽约 5.4px
+  const blade = new Path2D();
+  blade.moveTo(3.5, 3.5);
+  blade.lineTo(5.4, 1.6); blade.lineTo(21.4, 17.6); blade.lineTo(17.6, 21.4);
+  blade.closePath();
+
+  // 第一遍：深色加粗底稿当外描边，带轻微投影保证在明亮地形上可见
+  g.fillStyle = DARK; g.strokeStyle = DARK;
+  g.shadowColor = 'rgba(0,0,0,0.4)'; g.shadowBlur = 2; g.shadowOffsetY = 1;
+  g.fill(blade); g.lineWidth = 2; g.stroke(blade);
+  g.lineWidth = 5.4; g.beginPath(); g.moveTo(25.4, 17.6); g.lineTo(17.6, 25.4); g.stroke();   // 护手
+  g.lineWidth = 5;   g.beginPath(); g.moveTo(22.9, 22.9); g.lineTo(26.8, 26.8); g.stroke();   // 握柄
+  g.beginPath(); g.arc(28, 28, 3.2, 0, Math.PI * 2); g.fill();                                // 柄头
+  g.shadowColor = 'transparent';
+
+  // 第二遍：真实上色
+  const steel = g.createLinearGradient(21.4, 17.6, 17.6, 21.4);
+  steel.addColorStop(0, '#f7f9ff'); steel.addColorStop(0.55, '#c3ccdd'); steel.addColorStop(1, '#8f9cb5');
+  g.fillStyle = steel; g.fill(blade);
+  g.strokeStyle = 'rgba(255,255,255,0.85)'; g.lineWidth = 0.8;
+  g.beginPath(); g.moveTo(5, 5); g.lineTo(17, 17); g.stroke();                                // 刃脊高光
+  const gold = g.createLinearGradient(26, 18, 18, 26);
+  gold.addColorStop(0, '#eed08a'); gold.addColorStop(1, '#a8741f');
+  g.strokeStyle = gold; g.lineWidth = 3.8;
+  g.beginPath(); g.moveTo(25.4, 17.6); g.lineTo(17.6, 25.4); g.stroke();                      // 护手
+  g.strokeStyle = '#7a4e28'; g.lineWidth = 3.2;
+  g.beginPath(); g.moveTo(22.9, 22.9); g.lineTo(26.8, 26.8); g.stroke();                      // 握柄
+  g.fillStyle = gold;
+  g.beginPath(); g.arc(28, 28, 2.4, 0, Math.PI * 2); g.fill();                                // 柄头
+  return `url(${cv.toDataURL('image/png')}) 3 3, auto`;
+}
 
 const Game = {
   state: {
@@ -24,6 +64,10 @@ const Game = {
   hoverPlot: null,
   selectRing: null, _downPos: null,
 
+  // 技能瞄准态：非空表示正在选择地面施放点（范围圈跟随鼠标，左键施放 / 右键或 Esc 取消）
+  aiming: null, aimRing: null, aimDisc: null,
+  _groundPlane: new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),
+
   /* ================= 初始化 ================= */
   init() {
     const container = document.getElementById('game-container');
@@ -34,6 +78,7 @@ const Game = {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(this.renderer.domElement);
+    document.body.style.cursor = makeSwordCursor();   // 游戏画面内光标变剑（UI 按钮自身的 pointer 会覆盖）
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x88b6dd);
@@ -94,6 +139,8 @@ const Game = {
         World.update(sdt, this.time);
         FX.updateEnemyLights(this.enemies, sdt);   // 怪物夜光跟随（布阵/结算阶段也跑，灯光平滑熄灭）
         UI.setEnv();
+        UI.updateSkillCds();
+        if (this.aiming && this.state.phase !== 'wave') this.cancelAim();   // 波次结束等自动退出瞄准
         if (ph !== 'inter' && ph !== 'arrange') {
           this._updateWaves(sdt);
           this._updateEnemies(sdt);
@@ -111,6 +158,7 @@ const Game = {
     dom.addEventListener('pointermove', (e) => {
       this.mouseNDC.set((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
       this._updateHover();
+      this._updateAimReticle();
     });
     dom.addEventListener('pointerdown', (e) => { this._downPos = { x: e.clientX, y: e.clientY, button: e.button }; });
     dom.addEventListener('pointerup', (e) => {
@@ -118,10 +166,90 @@ const Game = {
       const moved = Math.hypot(e.clientX - this._downPos.x, e.clientY - this._downPos.y);
       const btn = this._downPos.button;
       this._downPos = null;
+      if (btn === 2) {   // 右键：取消瞄准（与相机平移并存）
+        if (this.aiming) this.cancelAim();
+        return;
+      }
       if (btn !== 0 || moved > 6) return;
       this.mouseNDC.set((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
+      // 瞄准中：左键点击地面 = 在该位置施放（点选英雄等常规交互被消费）
+      if (this.aiming) {
+        const pos = this.aiming.pos;
+        if (pos && this.castSkill(this.aiming.type, pos)) this.cancelAim();
+        return;
+      }
       this._handleClick();
     });
+  },
+
+  /* ---------- 技能瞄准（地面指定施放点） ---------- */
+
+  // 鼠标射线与地面(y=0)交点，钳制在地图范围内
+  _groundPoint() {
+    this.raycaster.setFromCamera(this.mouseNDC, this.camera);
+    const p = new THREE.Vector3();
+    if (!this.raycaster.ray.intersectPlane(this._groundPlane, p)) return null;
+    p.x = Utils.clamp(p.x, -30, 30);
+    p.z = Utils.clamp(p.z, -20, 20);
+    p.y = 0;
+    return p;
+  },
+
+  beginAim(type) {
+    const t = this.towers.find(tw => tw.type === type);
+    if (!t || this.state.paused) return;
+    if (this.state.phase !== 'wave') { UI.toast('技能需在战斗中施放', true); return; }
+    if (t.skillCd > 0) { UI.toast(`${CFG.TOWERS[type].skill.name} 冷却中 ${Math.ceil(t.skillCd)}s`, true); return; }
+    if (this.aiming && this.aiming.type === type) { this.cancelAim(); return; }   // 再按一次取消
+    const sk = CFG.TOWERS[type].skill;
+    this.aiming = { type };
+    this._buildAimReticle(sk.radius, CFG.TOWERS[type].clsColor);
+    this._updateAimReticle();
+    UI.setAimingBtn(type);
+    UI.setHint(`点击地面释放 ${CFG.TOWERS[type].skill.icon} ${CFG.TOWERS[type].skill.name}　|　左键：施放　右键 / Esc：取消`);
+  },
+
+  cancelAim() {
+    if (!this.aiming) return;
+    this.aiming = null;
+    this._removeAimReticle();
+    UI.setAimingBtn(null);
+    UI.setHint(HINT_DEFAULT);
+  },
+
+  _buildAimReticle(radius, colorCss) {
+    this._removeAimReticle();
+    const col = new THREE.Color(colorCss);
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(radius - 0.14, radius, 48),
+      new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false })
+    );
+    const disc = new THREE.Mesh(
+      new THREE.CircleGeometry(radius, 48),
+      new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false })
+    );
+    ring.rotation.x = disc.rotation.x = -Math.PI / 2;
+    ring.position.y = 0.12; disc.position.y = 0.1;
+    this.scene.add(ring, disc);
+    this.aimRing = ring; this.aimDisc = disc;
+  },
+
+  _removeAimReticle() {
+    for (const m of [this.aimRing, this.aimDisc]) {
+      if (!m) continue;
+      this.scene.remove(m);
+      m.geometry.dispose(); m.material.dispose();
+    }
+    this.aimRing = this.aimDisc = null;
+  },
+
+  _updateAimReticle() {
+    if (!this.aiming || !this.aimRing) return;
+    const p = this._groundPoint();
+    if (!p) return;
+    this.aiming.pos = p;
+    this.aimRing.position.set(p.x, 0.12, p.z);
+    this.aimDisc.position.set(p.x, 0.1, p.z);
   },
 
   _pickPlot() {
@@ -158,7 +286,7 @@ const Game = {
     this.towers = [];
     World.plots.forEach((plot, i) => {
       const type = this.order[i];
-      const tower = { type, level: this.heroLevels[type], plot, group: null, head: null, cooldown: 0.3 };
+      const tower = { type, level: this.heroLevels[type], plot, group: null, head: null, cooldown: 0.3, skillCd: 0 };
       this._spawnTowerMesh(tower);
       plot.tower = tower;
       plot.ring.visible = false;
@@ -621,6 +749,7 @@ const Game = {
 
   _gameOver(win) {
     this.state.phase = 'over';
+    this.cancelAim();
     UI.showWaveButton(null);
     AudioSys.play(win ? 'victory' : 'defeat');
     UI.showEnd(win, {
@@ -660,6 +789,7 @@ const Game = {
       const fx = cfg.fx[t.level - 1];
       t.head.userData.anim(this.time + t.plot.x, 0, t.castT > 0 ? 1 - t.castT / castDur : 0);
       if (t.castT > 0) t.castT = Math.max(0, t.castT - dt);
+      if (t.skillCd > 0) t.skillCd = Math.max(0, t.skillCd - dt);
 
       // 头顶经验条：满级隐藏，经验满时脉冲提示即将圣光升级
       if (t.xpBar) {
@@ -670,6 +800,7 @@ const Game = {
 
       // 蓄力到位 → 释放（伤害 / 弹道在动作 58% 处结算）
       if (t.pending && t.castT <= castDur * 0.42) { this._releaseShot(t, lv); continue; }
+      if (t.pending) continue;   // 蓄力中（含主动技能）不再索敌，避免普攻覆盖技能
 
       t.cooldown -= dt;
       if (t.cooldown > 0) continue;
@@ -729,6 +860,9 @@ const Game = {
     t.pending = null;
     const mult = p.mult;
     const fx = CFG.TOWERS[t.type].fx[t.level - 1];
+
+    // 主动群攻技能：复用蓄力-释放节奏，动作 58% 处结算（以瞄准的地面位置为中心）
+    if (p.skill) { this._releaseSkill(t, lv, mult, p.pos); return; }
 
     if (t.type === 'mage') {
       const target = p.target;
@@ -825,6 +959,96 @@ const Game = {
     tower.head.rotation.y = Math.atan2(dx, dz) - tower.group.rotation.y;
   },
 
+  /* ================= 主动群攻技能（手动瞄准地面位置施放，独立 CD） ================= */
+
+  // 瞄准确认后在指定地面位置施放：设技能 CD 并挂 pending，复用蓄力-释放机制（动作 58% 处结算）。
+  // 技能优先：可打断普攻蓄力（该次普攻作废），索敌侧已保证技能 pending 不会被普攻覆盖
+  castSkill(type, pos) {
+    const t = this.towers.find(tw => tw.type === type);
+    if (!t || this.state.paused) return false;
+    if (this.state.phase !== 'wave') { UI.toast('技能需在战斗中施放', true); return false; }
+    if (t.skillCd > 0) { UI.toast(`${CFG.TOWERS[type].skill.name} 冷却中 ${Math.ceil(t.skillCd)}s`, true); return false; }
+    t.skillCd = CFG.TOWERS[type].skill.cd;
+    t.castT = CFG.FX.castDur;
+    t.head.rotation.y = Math.atan2(pos.x - t.plot.x, pos.z - t.plot.z) - t.group.rotation.y;
+    t.pending = { skill: true, mult: this._auraMult(t.plot.x, t.plot.z), pos };
+    return true;
+  },
+
+  /* 技能结算：以指定地面位置为中心的大范围群攻，各英雄专属机制（伤害/特效随等级成长） */
+  _releaseSkill(t, lv, mult, pos) {
+    const sk = CFG.TOWERS[t.type].skill;
+    const fx = CFG.TOWERS[t.type].fx[t.level - 1];
+    const gx = pos.x, gz = pos.z;
+    const center = new THREE.Vector3(gx, 0, gz);
+    const halo = new THREE.Color(fx.color).lerp(new THREE.Color(0xffffff), 0.45).getHex();
+    // 施放瞬间到结算约有 0.24s 蓄力间隔，先对存活者快照，结算时再逐个校验
+    const hits = this.enemies.filter(e => e.alive &&
+      Utils.distXZ(gx, gz, e.mesh.position.x, e.mesh.position.z) <= sk.radius);
+
+    if (t.type === 'mage') {
+      // 冰霜新星：双层冰环爆发，重创 + 强制减速
+      FX.ring(center, fx.color, sk.radius * 1.05, 0.5);
+      FX.ring(center, halo, sk.radius * 0.7, 0.35);
+      FX.groundGlow(center, fx.color, sk.radius * 1.1, 0.7);
+      FX.burst(new THREE.Vector3(gx, 1.0, gz), fx.color, { count: Math.round(26 * fx.boost), speed: 6, life: 0.6, up: 1.5 });
+      FX.light(new THREE.Vector3(gx, 1.4, gz), fx.color, { intensity: 3.0 * fx.boost, dist: sk.radius * 1.8, life: 0.45 });
+      for (const e of hits) {
+        this.damageEnemy(e, lv.dmg * sk.dmgMult * mult, 'mage');
+        if (e.alive) this._applySlow(e, sk);
+      }
+      AudioSys.play('shoot_frost');
+
+    } else if (t.type === 'hunter') {
+      // 箭雨：范围内每个敌人上空落下一支强箭
+      FX.groundGlow(center, fx.color, sk.radius * 1.05, 0.8);
+      FX.ring(center, fx.color, sk.radius, 0.5);
+      for (const e of hits) {
+        FX.projectile({
+          from: e.mesh.position.clone().add(new THREE.Vector3((Math.random() - 0.5) * 2, 9, (Math.random() - 0.5) * 2)),
+          kind: 'arrow', speed: 22, target: e, color: 0xffe2a8, scale: fx.boost * 1.4,
+          onHit: () => {
+            if (!e.alive) return;
+            FX.burst(e.mesh.position.clone().add(new THREE.Vector3(0, 0.8, 0)), 0xffe2a8, { count: 8, speed: 3.2, life: 0.35, gravity: 3 });
+            this.damageEnemy(e, lv.dmg * sk.dmgMult * mult, 'hunter');
+          }
+        });
+      }
+      AudioSys.play('shoot_arrow');
+
+    } else if (t.type === 'paladin') {
+      // 圣光风暴：放大版奉献冲击，重创 + 长眩晕
+      FX.pillar(center, fx.color, { radius: 0.8 * fx.boost, height: 5.5, life: 0.4 });
+      FX.groundGlow(center, fx.color, sk.radius * 1.1, 0.7);
+      FX.ring(center, fx.color, sk.radius * 1.15, 0.55);
+      FX.ring(center, halo, sk.radius * 0.8, 0.4);
+      FX.light(new THREE.Vector3(gx, 1.4, gz), fx.color, { intensity: 3.6 * fx.boost, dist: sk.radius * 1.8, life: 0.45 });
+      FX.burst(new THREE.Vector3(gx, 1.0, gz), fx.color, { count: Math.round(22 * fx.boost), speed: 5.5, life: 0.5 });
+      FX.punch(t.head);
+      for (const e of hits) {
+        this.damageEnemy(e, lv.dmg * sk.dmgMult * mult, 'paladin');
+        if (e.alive) e.stunUntil = this.time + sk.stun;
+      }
+      AudioSys.play('consecrate');
+
+    } else if (t.type === 'priest') {
+      // 暗言术：灾：暗影席卷，直伤 + 持续蚕食（沿用普攻 4 层上限）
+      FX.pillar(center, fx.color, { radius: 0.8 * fx.boost, height: 5, life: 0.35 });
+      FX.groundGlow(center, fx.color, sk.radius * 1.05, 0.7);
+      FX.ring(center, fx.color, sk.radius * 1.05, 0.5);
+      FX.light(new THREE.Vector3(gx, 1.4, gz), fx.color, { intensity: 3.2 * fx.boost, dist: sk.radius * 1.7, life: 0.45 });
+      FX.burst(new THREE.Vector3(gx, 1.0, gz), fx.color, { count: Math.round(20 * fx.boost), speed: 5, life: 0.55 });
+      for (const e of hits) {
+        this.damageEnemy(e, lv.dot * sk.dmgMult * mult, 'priest');
+        if (e.alive) {
+          e.dots.push({ dps: lv.dot * sk.dotMult * mult / 5, until: this.time + 5, src: 'priest' });
+          if (e.dots.length > 4) e.dots.shift();
+        }
+      }
+      AudioSys.play('shoot_shadow');
+    }
+  },
+
   /* ================= 流程控制 ================= */
   // 布阵界面：确认阵容，开始第 1 关
   startGame() {
@@ -832,6 +1056,7 @@ const Game = {
     this.state.phase = 'build';
     this.waveTimer = Infinity;
     UI.hideArrange();
+    UI.showSkillBar();
     UI.showWaveButton('⚔ 开始第 1 波', 0);
     UI.setHint(HINT_DEFAULT);
   },
@@ -847,6 +1072,7 @@ const Game = {
     this.state.phase = 'build';
     this.waveTimer = Infinity;
     UI.hideLevelScreen();
+    UI.showSkillBar();
     UI.showWaveButton(`⚔ 开始 ${lv.name}`, 0);
     UI.setWave(this.state.wave);
     UI.setHint(HINT_DEFAULT);

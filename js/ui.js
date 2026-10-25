@@ -7,6 +7,7 @@ const UI = {
   init(game) {
     this.game = game;
     this._bind();
+    this.renderSkillBar();
   },
 
   /* ---------- 小队卡牌（布阵 / 关卡结算共用） ---------- */
@@ -108,6 +109,7 @@ const UI = {
       CFG.LEVELS[lv] ? `▶ 开启 ${CFG.LEVELS[lv].name}` : '▶ 开启下一关';
     this._renderSquad(document.getElementById('squad-level'), true);
     document.getElementById('level-screen').classList.remove('hidden');
+    this.hideSkillBar();
   },
   hideLevelScreen() { document.getElementById('level-screen').classList.add('hidden'); },
 
@@ -126,12 +128,73 @@ const UI = {
     document.addEventListener('keydown', (e) => {
       if (e.repeat) return;
       const k = e.key;
-      if (k === 'Escape') { g.deselectTower(); this._clearSel(); }
+      if (k === 'Escape') { g.cancelAim(); g.deselectTower(); this._clearSel(); }
       else if (k === ' ') { e.preventDefault(); g.callNextWave(); }
+      else if (k >= '1' && k <= '4') g.beginAim(g.order[Number(k) - 1]);   // 英雄群攻技能（进入地面瞄准）
       else if (k === 'p' || k === 'P') g.togglePause();
       else if (k === 't' || k === 'T') g.debugTime();       // 调试：时刻 +4h
       else if (k === 'w' || k === 'W') g.debugWeather();    // 调试：切换天气
     });
+  },
+
+  /* ---------- 英雄群攻技能栏（战斗中常驻，点击 / 快捷键 1-4 施放） ---------- */
+  renderSkillBar() {
+    const g = this.game;
+    const bar = document.getElementById('skill-bar');
+    bar.innerHTML = '';
+    this._skillBtns = {};
+    g.order.forEach((type, i) => {
+      const cfg = CFG.TOWERS[type];
+      const sk = cfg.skill;
+      const btn = document.createElement('button');
+      btn.className = 'skill-btn';
+      btn.dataset.type = type;
+      btn.style.setProperty('--cls', cfg.clsColor);
+      btn.title = `${sk.name}（快捷键 ${i + 1}）\n${sk.desc}\n冷却 ${sk.cd}s · 点击后左键选择地面位置施放，右键/Esc 取消`;
+      btn.innerHTML = `
+        <span class="skill-key">${i + 1}</span>
+        <span class="skill-icon">${sk.icon}</span>
+        <span class="skill-name">${sk.name}</span>
+        <div class="skill-cd-mask"></div>
+        <span class="skill-cd-text"></span>`;
+      btn.addEventListener('click', () => g.beginAim(type));
+      bar.appendChild(btn);
+      this._skillBtns[type] = {
+        root: btn, mask: btn.querySelector('.skill-cd-mask'),
+        text: btn.querySelector('.skill-cd-text'), onCd: null, h: -1, txt: null
+      };
+    });
+  },
+  // 瞄准态高亮当前正在选择施放点的技能按钮（type 为 null 时全部清除）
+  setAimingBtn(type) {
+    document.querySelectorAll('.skill-btn').forEach(b =>
+      b.classList.toggle('aiming', b.dataset.type === type));
+  },
+  showSkillBar() { document.getElementById('skill-bar').classList.remove('hidden'); },
+  hideSkillBar() { document.getElementById('skill-bar').classList.add('hidden'); },
+
+  // 每帧同步技能按钮冷却：遮罩自底向上退去 + 剩余秒数（内容不变时跳过写 DOM）
+  updateSkillCds() {
+    if (!this._skillBtns) return;
+    for (const t of this.game.towers) {
+      const b = this._skillBtns[t.type];
+      if (!b) continue;
+      const onCd = t.skillCd > 0;
+      const h = onCd ? Math.round(t.skillCd / CFG.TOWERS[t.type].skill.cd * 100) : 0;
+      const txt = onCd ? `${Math.ceil(t.skillCd)}` : '';
+      if (onCd !== b.onCd) {   // 与高度判断分开：CD 尾段取整后 h 可能提前到 0
+        b.onCd = onCd;
+        b.root.classList.toggle('on-cd', onCd);
+      }
+      if (h !== b.h) {
+        b.h = h;
+        b.mask.style.height = `${h}%`;
+      }
+      if (txt !== b.txt) {
+        b.txt = txt;
+        b.text.textContent = txt;
+      }
+    }
   },
 
   /* ---------- 数值刷新 ---------- */
@@ -221,6 +284,9 @@ const UI = {
     document.getElementById('tp-stats').innerHTML =
       cfg.statLine(lv).split('\n').map(s => `<div>${s}</div>`).join('');
     document.getElementById('tp-desc').textContent = cfg.desc;
+    const sk = cfg.skill;
+    document.getElementById('tp-skill').innerHTML =
+      `<b>${sk.icon} ${sk.name}</b> · CD ${sk.cd}s · 快捷键 ${this.game.order.indexOf(tower.type) + 1}<br>${sk.desc}（点选地面位置施放）`;
     this._fillPanelXp(tower);
   },
 
@@ -259,5 +325,6 @@ const UI = {
       <div>消灭敌人 <b>${stats.kills}</b></div>
       <div>剩余积分 <b>🏅${stats.points}</b></div>`;
     screen.classList.remove('hidden');
+    this.hideSkillBar();
   }
 };

@@ -147,6 +147,12 @@ const CFG = {
         { dmg: 56, range: 14.4, rate: 0.90, splash: 2.4, slow: 0.46, slowDur: 2.5, slowChance: 0.20 },
         { dmg: 96, range: 16.0, rate: 0.80, splash: 2.8, slow: 0.54, slowDur: 2.8, slowChance: 0.25 }
       ],
+      // 主动群攻技能（手动点击/按快捷键施放，独立 CD）：伤害 = 当前等级 dmg × dmgMult
+      skill: {
+        name: '冰霜新星', icon: '❄', cd: 16, radius: 10, dmgMult: 2.5,
+        slow: 0.50, slowDur: 3,
+        desc: '大范围冰爆，重创并强制减速范围内所有敌人'
+      },
       statLine: l => `伤害 ${l.dmg}　射程 ${l.range}　间隔 ${l.rate}s\n溅射 ${l.splash}　减速 ${Math.round(l.slow*100)}% / ${l.slowDur}s\n减速触发率 ${Math.round(l.slowChance*100)}%`
     },
     hunter: {
@@ -166,6 +172,11 @@ const CFG = {
         { dmg: 28, range: 18.4, rate: 0.34, poison: 14, poisonDur: 3 },
         { dmg: 48, range: 20.5, rate: 0.28, poison: 24, poisonDur: 3 }
       ],
+      // 主动群攻技能：范围内每个敌人从天而降一支强箭，伤害 = 当前等级 dmg × dmgMult
+      skill: {
+        name: '箭雨', icon: '☄', cd: 20, radius: 12, dmgMult: 2.0,
+        desc: '天降箭雨，范围内每个敌人各中一支强力箭矢'
+      },
       statLine: l => `伤害 ${l.dmg}　射程 ${l.range}　间隔 ${l.rate}s\n(每秒约 ${Math.round(l.dmg / l.rate)} 伤害)${l.poison ? `\n毒性 ${l.poison}/s × ${l.poisonDur}s（无视护甲）` : ''}`
     },
     paladin: {
@@ -184,6 +195,11 @@ const CFG = {
         { dmg: 84, range: 7.2, rate: 1.30, stun: 0.8 },
         { dmg: 145, range: 8.0, rate: 1.15, stun: 1.0 }
       ],
+      // 主动群攻技能：大范围圣光冲击 + 长眩晕，伤害 = 当前等级 dmg × dmgMult
+      skill: {
+        name: '圣光风暴', icon: '💥', cd: 18, radius: 11, dmgMult: 2.2, stun: 1.2,
+        desc: '圣光冲击波席卷战场，重创并长时间眩晕周围所有敌人'
+      },
       statLine: l => `冲击伤害 ${l.dmg}　范围 ${l.range}\n间隔 ${l.rate}s　眩晕 ${l.stun}s`
     },
     priest: {
@@ -202,6 +218,11 @@ const CFG = {
         { dot: 95, range: 12.0, rate: 1.8, aura: 0.50, auraRange: 10.0 },
         { dot: 160, range: 13.2, rate: 1.7, aura: 0.65, auraRange: 11.0 }
       ],
+      // 主动群攻技能：直伤 = 当前等级 dot × dmgMult，另附 dot × dotMult / 5s 的持续蚕食
+      skill: {
+        name: '暗言术：灾', icon: '🔮', cd: 20, radius: 10, dmgMult: 1.5, dotMult: 1.2,
+        desc: '暗影能量席卷战场，重创范围内敌人并持续蚕食'
+      },
       statLine: l => `暗言术 ${l.dot} 伤害/5s　射程 ${l.range}\n光环 +${Math.round(l.aura*100)}% 友军伤害（半径 ${l.auraRange}）`
     }
   },
