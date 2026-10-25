@@ -1,0 +1,170 @@
+/* ============ 游戏数值配置 ============ */
+/* 城墙顶高度（英雄站位所在的墙顶 y，暴风城大门墙体同高） */
+const WALL_H = 3.4;
+
+const CFG = {
+  LIVES: 20,
+  START_POINTS: 0,         // 初始积分：击杀 / 波次奖励获得（可在关卡结算画面购买经验）
+  TOTAL_WAVES: 20,
+  WAVE_BREAK: 14,          // 波次间隔秒数（可提前召唤拿奖励）
+
+  // 英雄经验：击杀者获得怪物 xp；经验条满自动升级（need 为升到 2/3/4 级所需）
+  XP: { need: [180, 380, 700] },
+  // 关卡结算画面用积分购买经验：每次点击花费 price 积分，为该英雄增加 xp 点经验（可连点）
+  XP_BUY: { price: 40, xp: 50 },
+
+  // 地图与路径（黑暗之门 → 暴风城大门）
+  GROUND_W: 64, GROUND_D: 44,
+  PATH_WIDTH: 2.4,
+  PATH: [
+    [-24, 0], [-14, 0], [-14, -6], [-6, -6], [-6, 4], [2, 4],
+    [2, -4], [9, -4], [9, 6], [15, 6], [15, 0], [24, 0]
+  ],
+  // 相机初始位：城墙斜上空，朝西俯瞰战场（可拖拽旋转 / 右键平移 / 滚轮缩放）
+  CAMERA: { target: [18, 2, 0], theta: Math.PI / 2, phi: 0.9, radius: 18 },
+
+  // 4 个英雄站位：暴风城大门城墙顶一字排开（门洞两侧各 2 座，按站位 1→4 从北到南）
+  PLOTS: [
+    [24.4, WALL_H, 3.55], [24.4, WALL_H, 2.45],
+    [24.4, WALL_H, -2.45], [24.4, WALL_H, -3.55]
+  ],
+
+  // ============ 英雄塔 ============
+  // fx: 逐级光影档位——弹道/粒子/点光颜色随级变亮变纯，boost 放大弹体体积、光强与粒子量
+  TOWERS: {
+    mage: {
+      name: '亡灵法师', role: '范围输出', icon: '❄️',
+      clsColor: '#6fb9ff',
+      desc: '发射寒冰箭，造成范围溅射伤害；减速有触发概率，等级越高越容易触发。',
+      fx: [
+        { color: 0x7fc8ff, boost: 1.0 },
+        { color: 0x8fd8ff, boost: 1.15 },
+        { color: 0xaee6ff, boost: 1.3 },
+        { color: 0xdcf6ff, boost: 1.5 }
+      ],
+      // slowChance：寒冰箭减速触发概率（随级提升，最高不得超过 25%）
+      levels: [
+        { dmg: 18, range: 11.0, rate: 1.10, splash: 1.7, slow: 0.30, slowDur: 2.0, slowChance: 0.10 },
+        { dmg: 32, range: 12.6, rate: 1.00, splash: 2.0, slow: 0.38, slowDur: 2.2, slowChance: 0.15 },
+        { dmg: 56, range: 14.4, rate: 0.90, splash: 2.4, slow: 0.46, slowDur: 2.5, slowChance: 0.20 },
+        { dmg: 96, range: 16.0, rate: 0.80, splash: 2.8, slow: 0.54, slowDur: 2.8, slowChance: 0.25 }
+      ],
+      statLine: l => `伤害 ${l.dmg}　射程 ${l.range}　间隔 ${l.rate}s\n溅射 ${l.splash}　减速 ${Math.round(l.slow*100)}% / ${l.slowDur}s\n减速触发率 ${Math.round(l.slowChance*100)}%`
+    },
+    hunter: {
+      name: '暗夜精灵猎人', role: '快速单体', icon: '🏹',
+      clsColor: '#9d7bff',
+      desc: '射速极快、射程最远，箭无虚发，单体物理伤害；2 级解锁毒箭，命中使怪物中毒持续掉血。',
+      fx: [
+        { color: 0x9d7bff, boost: 1.0 },
+        { color: 0xad92ff, boost: 1.15 },
+        { color: 0xc4aeff, boost: 1.3 },
+        { color: 0xe4d9ff, boost: 1.5 }
+      ],
+      // poison：2 级解锁的毒箭——命中必附毒持续掉血（无视护甲），同一目标最多 2 层
+      levels: [
+        { dmg: 9,  range: 14.0, rate: 0.50 },
+        { dmg: 16, range: 16.0, rate: 0.42, poison: 8,  poisonDur: 3 },
+        { dmg: 28, range: 18.4, rate: 0.34, poison: 14, poisonDur: 3 },
+        { dmg: 48, range: 20.5, rate: 0.28, poison: 24, poisonDur: 3 }
+      ],
+      statLine: l => `伤害 ${l.dmg}　射程 ${l.range}　间隔 ${l.rate}s\n(每秒约 ${Math.round(l.dmg / l.rate)} 伤害)${l.poison ? `\n毒性 ${l.poison}/s × ${l.poisonDur}s（无视护甲）` : ''}`
+    },
+    paladin: {
+      name: '人类圣骑士', role: '近战清场', icon: '⚔️',
+      clsColor: '#ffd257',
+      desc: '释放奉献圣光冲击波，震慑周围所有敌人并短暂眩晕。',
+      fx: [
+        { color: 0xffd257, boost: 1.0 },
+        { color: 0xffdc7a, boost: 1.15 },
+        { color: 0xffe79d, boost: 1.3 },
+        { color: 0xfff3c8, boost: 1.5 }
+      ],
+      levels: [
+        { dmg: 26, range: 5.4, rate: 1.60, stun: 0.4 },
+        { dmg: 48, range: 6.2, rate: 1.45, stun: 0.6 },
+        { dmg: 84, range: 7.2, rate: 1.30, stun: 0.8 },
+        { dmg: 145, range: 8.0, rate: 1.15, stun: 1.0 }
+      ],
+      statLine: l => `冲击伤害 ${l.dmg}　范围 ${l.range}\n间隔 ${l.rate}s　眩晕 ${l.stun}s`
+    },
+    priest: {
+      name: '血精灵牧师', role: '暗影辅助', icon: '✨',
+      clsColor: '#ff8a8a',
+      desc: '暗言术：痛蚕食敌人；暗影光环使周围友军伤害提升。',
+      fx: [
+        { color: 0xb04ae8, boost: 1.0 },
+        { color: 0xbd63ec, boost: 1.15 },
+        { color: 0xcf80f2, boost: 1.3 },
+        { color: 0xe8b6f8, boost: 1.5 }
+      ],
+      levels: [
+        { dot: 30, range: 10.0, rate: 2.0, aura: 0.20, auraRange: 8.0 },
+        { dot: 55, range: 11.0, rate: 1.9, aura: 0.35, auraRange: 9.0 },
+        { dot: 95, range: 12.0, rate: 1.8, aura: 0.50, auraRange: 10.0 },
+        { dot: 160, range: 13.2, rate: 1.7, aura: 0.65, auraRange: 11.0 }
+      ],
+      statLine: l => `暗言术 ${l.dot} 伤害/5s　射程 ${l.range}\n光环 +${Math.round(l.aura*100)}% 友军伤害（半径 ${l.auraRange}）`
+    }
+  },
+
+  // ============ 视觉特效（光影 / 辉光） ============
+  FX: {
+    bloom: { enabled: true, strength: 0.45, radius: 0.35, threshold: 0.94 },
+    castDur: 0.42,          // 施法动作时长（秒），伤害/弹道在动作 58% 处释放
+    light: { intensity: 2.2, dist: 7.5, life: 0.35 }   // 点光闪光默认参数
+  },
+
+  // ============ 敌人（points 为战绩分数，xp 为击杀者获得的经验） ============
+  ENEMIES: {
+    murloc:   { name: '鱼人',       hp: 32,   speed: 2.30, points: 8,   xp: 15,  scale: 0.95 },
+    boar:     { name: '野猪',       hp: 60,   speed: 1.70, points: 10,  xp: 20,  scale: 1.0  },
+    ghoul:    { name: '食尸鬼',     hp: 92,   speed: 2.00, points: 13,  xp: 26,  scale: 1.05 },
+    gargoyle: { name: '石像鬼',     hp: 52,   speed: 2.90, points: 13,  xp: 26,  scale: 0.9, flying: true },
+    orc:      { name: '兽人步兵',   hp: 185,  speed: 1.15, points: 20,  xp: 42,  armor: 0.25, scale: 1.2 },
+    lich:     { name: '巫妖',       hp: 560,  speed: 1.05, points: 70,  xp: 165, armor: 0.15, boss: true, scale: 1.35 },
+    abyssal:  { name: '深渊火魔王', hp: 1500, speed: 0.85, points: 150, xp: 360, armor: 0.30, boss: true, scale: 1.7 },
+    lichking: { name: '巫妖王',     hp: 3400, speed: 0.75, points: 330, xp: 780, armor: 0.30, boss: true, scale: 1.9 }
+  },
+
+  // ============ 波次（多组并行：type, count, gap 秒, delay 秒后开始） ============
+  WAVES: [
+    [ { type: 'murloc', count: 6, gap: 1.2, delay: 0 } ],
+    [ { type: 'murloc', count: 8, gap: 1.0, delay: 0 }, { type: 'boar', count: 2, gap: 1.6, delay: 4 } ],
+    [ { type: 'boar', count: 6, gap: 1.4, delay: 0 }, { type: 'murloc', count: 5, gap: 0.9, delay: 2 } ],
+    [ { type: 'ghoul', count: 6, gap: 1.3, delay: 0 }, { type: 'boar', count: 4, gap: 1.5, delay: 1 } ],
+    [ { type: 'ghoul', count: 6, gap: 1.2, delay: 0 }, { type: 'gargoyle', count: 5, gap: 1.0, delay: 4 } ],
+    [ { type: 'gargoyle', count: 8, gap: 0.9, delay: 0 }, { type: 'murloc', count: 8, gap: 0.8, delay: 2 } ],
+    [ { type: 'orc', count: 4, gap: 2.0, delay: 0 }, { type: 'boar', count: 6, gap: 1.2, delay: 3 } ],
+    [ { type: 'ghoul', count: 10, gap: 1.0, delay: 0 }, { type: 'gargoyle', count: 6, gap: 1.0, delay: 2 } ],
+    [ { type: 'orc', count: 6, gap: 1.8, delay: 0 }, { type: 'ghoul', count: 8, gap: 1.0, delay: 1 } ],
+    [ { type: 'murloc', count: 8, gap: 0.8, delay: 0 }, { type: 'lich', count: 1, gap: 1, delay: 5 } ],
+    [ { type: 'orc', count: 8, gap: 1.6, delay: 0 }, { type: 'gargoyle', count: 6, gap: 0.9, delay: 2 } ],
+    [ { type: 'boar', count: 12, gap: 1.0, delay: 0 }, { type: 'ghoul', count: 10, gap: 1.0, delay: 1 } ],
+    [ { type: 'orc', count: 8, gap: 1.5, delay: 0 }, { type: 'gargoyle', count: 8, gap: 0.9, delay: 2 } ],
+    [ { type: 'ghoul', count: 14, gap: 0.9, delay: 0 }, { type: 'orc', count: 6, gap: 1.6, delay: 3 } ],
+    [ { type: 'orc', count: 8, gap: 1.4, delay: 0 }, { type: 'abyssal', count: 1, gap: 1, delay: 6 } ],
+    [ { type: 'gargoyle', count: 12, gap: 0.8, delay: 0 }, { type: 'murloc', count: 12, gap: 0.6, delay: 1 } ],
+    [ { type: 'orc', count: 12, gap: 1.3, delay: 0 }, { type: 'ghoul', count: 12, gap: 0.9, delay: 2 } ],
+    [ { type: 'gargoyle', count: 10, gap: 0.8, delay: 0 }, { type: 'orc', count: 8, gap: 1.4, delay: 2 }, { type: 'ghoul', count: 10, gap: 0.9, delay: 4 } ],
+    [ { type: 'orc', count: 14, gap: 1.2, delay: 0 }, { type: 'gargoyle', count: 8, gap: 0.8, delay: 2 }, { type: 'ghoul', count: 12, gap: 0.8, delay: 4 } ],
+    [ { type: 'ghoul', count: 10, gap: 0.9, delay: 0 }, { type: 'gargoyle', count: 6, gap: 0.8, delay: 3 }, { type: 'lichking', count: 1, gap: 1, delay: 8 } ]
+  ],
+
+  // 波次血量成长
+  hpMult(wave) { return 1 + (wave - 1) * 0.15; },
+  // 提前召唤下一波的积分奖励
+  callBonus(secondsLeft) { return Math.ceil(secondsLeft * 2); },
+  // 通关波次奖励
+  waveBonus(wave) { return 12 + wave * 3; },
+
+  // ============ 关卡（20 波拆为 4 关，打完一关暂停结算再开下一关） ============
+  LEVELS: [
+    { name: '第一关 · 兽人先锋',   from: 1,  to: 5 },
+    { name: '第二关 · 亡灵大军',   from: 6,  to: 10 },
+    { name: '第三关 · 燃烧军团',   from: 11, to: 15 },
+    { name: '第四关 · 巫妖王之怒', from: 16, to: 20 }
+  ],
+  // 整关通关的积分奖励
+  levelBonus(level) { return 60 + level * 40; }
+};

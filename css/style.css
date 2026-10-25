@@ -1,0 +1,210 @@
+/* ============ 艾泽拉斯守护战 — 魔兽风格 UI ============ */
+* { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #0b0e12; }
+body { font-family: "Microsoft YaHei", "PingFang SC", "STHeiti", sans-serif; color: #e8d5a3; }
+
+#game-container { position: fixed; inset: 0; }
+#game-container canvas { display: block; }
+
+#ui-root { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+#ui-root > * { pointer-events: auto; }
+
+/* ---------- 魔兽面板通用样式 ---------- */
+.wow-panel {
+  background: linear-gradient(180deg, rgba(28,20,12,.94) 0%, rgba(46,32,18,.96) 55%, rgba(20,14,8,.96) 100%);
+  border: 2px solid #6b5426;
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px #17110a inset, 0 0 0 3px #a8873c inset, 0 6px 24px rgba(0,0,0,.7);
+  position: relative;
+}
+.wow-btn {
+  font-family: inherit; color: #f3e2b3; font-size: 14px; font-weight: bold;
+  background: linear-gradient(180deg, #4a3418 0%, #6d5223 50%, #3a2a12 100%);
+  border: 1px solid #a8873c; border-radius: 5px; padding: 6px 14px; cursor: pointer;
+  text-shadow: 0 1px 2px #000; letter-spacing: 1px;
+  box-shadow: 0 0 0 1px #17110a inset;
+  transition: filter .12s, transform .05s;
+}
+.wow-btn:hover { filter: brightness(1.25); }
+.wow-btn:active { transform: translateY(1px); }
+.wow-btn:disabled { filter: grayscale(.8) brightness(.6); cursor: not-allowed; }
+.wow-btn.square { width: 34px; height: 30px; padding: 0; text-align: center; }
+.wow-btn.big { font-size: 17px; padding: 10px 30px; }
+
+/* ---------- 顶部状态栏 ---------- */
+#top-bar {
+  position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 18px; padding: 8px 20px; min-width: 560px;
+}
+.stat { display: flex; align-items: center; gap: 6px; font-size: 18px; font-weight: bold;
+  text-shadow: 0 0 6px rgba(0,0,0,.9), 0 1px 2px #000; min-width: 70px; }
+.stat .stat-icon { font-size: 19px; filter: drop-shadow(0 0 4px rgba(0,0,0,.8)); }
+.stat.points { color: #ffd257; }
+.stat.lives { color: #ff7d6e; }
+.stat.wave  { color: #a8d8ff; }
+.stat.kills { color: #c9c9c9; }
+#top-bar .spacer { flex: 1; }
+
+/* ---------- 召唤波次按钮 ---------- */
+#btn-wave {
+  position: absolute; top: 74px; left: 50%; transform: translateX(-50%);
+  color: #ffe9a8; border-color: #c9a44a; font-size: 16px;
+  animation: wavebtn-pulse 1.6s ease-in-out infinite;
+}
+#btn-wave:hover { animation-play-state: paused; }
+@keyframes wavebtn-pulse {
+  0%, 100% { box-shadow: 0 0 0 1px #17110a inset, 0 0 10px rgba(255,210,87,.25); }
+  50% { box-shadow: 0 0 0 1px #17110a inset, 0 0 22px rgba(255,210,87,.65); }
+}
+#wave-timer { position: absolute; top: 112px; left: 50%; transform: translateX(-50%);
+  font-size: 13px; color: #bda66b; text-shadow: 0 1px 2px #000; }
+
+/* ---------- 波次横幅 ---------- */
+#banner {
+  position: absolute; top: 22%; left: 50%; transform: translateX(-50%);
+  font-size: 44px; font-weight: bold; letter-spacing: 6px; white-space: nowrap;
+  color: #ffe9a8; text-shadow: 0 0 18px rgba(255,120,30,.8), 0 3px 6px #000, 0 0 2px #000;
+  animation: banner-in .5s ease-out;
+}
+#banner.boss { color: #ff5d4a; text-shadow: 0 0 24px rgba(255,40,20,.9), 0 3px 6px #000; }
+@keyframes banner-in {
+  0% { opacity: 0; transform: translateX(-50%) scale(1.6); }
+  100% { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+
+/* ---------- 提示气泡 ---------- */
+#toast {
+  position: absolute; bottom: 148px; left: 50%; transform: translateX(-50%);
+  background: rgba(20,12,6,.92); border: 1px solid #a8873c; border-radius: 6px;
+  padding: 8px 18px; font-size: 14px; color: #ffd257; white-space: nowrap;
+  text-shadow: 0 1px 2px #000;
+}
+#toast.error { color: #ff7d6e; }
+
+/* ---------- 底部提示 ---------- */
+#hint-bar {
+  position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
+  font-size: 12px; color: rgba(232,213,163,.55); text-shadow: 0 1px 2px #000;
+  pointer-events: none; white-space: nowrap;
+}
+
+/* ---------- 卡牌通用元素（小队卡复用） ---------- */
+.card-portrait {
+  width: 100%; height: 64px; border-radius: 4px 4px 0 0;
+  display: flex; align-items: center; justify-content: center; font-size: 30px;
+  text-shadow: 0 2px 5px #000;
+  border-bottom: 2px solid #6b5426;
+}
+.card-name { font-size: 12.5px; font-weight: bold; color: #f3e2b3; margin-top: 5px; text-shadow: 0 1px 2px #000; }
+.card-role { font-size: 10.5px; color: #a68f5e; margin-top: 1px; }
+.card-lv { color: #ffd257; letter-spacing: 1px; }
+
+/* ---------- 布阵 / 关卡结算界面 ---------- */
+.screen {
+  position: fixed; inset: 0; background: rgba(5,4,2,.72); z-index: 50;
+  display: flex; align-items: center; justify-content: center; backdrop-filter: blur(3px);
+}
+.screen-box { width: 940px; max-width: 95vw; padding: 26px 30px 30px; text-align: center; }
+.screen-title { font-size: 34px; font-weight: bold; letter-spacing: 6px; margin-bottom: 6px;
+  color: #ffd257; text-shadow: 0 0 20px rgba(255,180,40,.55), 0 2px 4px #000; }
+.screen-sub { color: #a68f5e; font-size: 14px; margin-bottom: 16px; }
+.screen-hint { color: #8a744a; font-size: 12.5px; margin: 12px 0 0; }
+.screen .wow-btn.big { margin-top: 16px; }
+
+.squad-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.squad-card {
+  position: relative; border: 2px solid #6b5426; border-radius: 8px; cursor: pointer;
+  background: linear-gradient(180deg, #221709 0%, #33230f 100%);
+  box-shadow: 0 0 0 1px #17110a inset; padding: 12px 10px 12px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  transition: transform .1s, border-color .1s, box-shadow .1s;
+}
+.squad-card:hover { transform: translateY(-3px); border-color: #c9a44a; }
+.squad-card.swap-sel {
+  border-color: #ffd257;
+  box-shadow: 0 0 16px rgba(255,210,87,.75), 0 0 0 1px #17110a inset;
+  transform: translateY(-3px);
+}
+.slot-tag {
+  position: absolute; top: -10px; left: -8px;
+  background: linear-gradient(180deg, #4a3418, #2a1d0c); border: 1px solid #a8873c; border-radius: 4px;
+  color: #ffd257; font-size: 11px; font-weight: bold; padding: 2px 7px; text-shadow: 0 1px 2px #000;
+}
+.squad-card .card-portrait { width: 78px; height: 56px; border: 1px solid #6b5426; border-radius: 6px; font-size: 28px; flex: none; }
+.squad-card .card-name { font-size: 14.5px; margin-top: 2px; }
+.squad-card .card-role { font-size: 11px; }
+.card-skill { font-size: 11.5px; color: #c8b183; line-height: 1.45; min-height: 33px; }
+.card-stat { font-size: 11.5px; color: #b8d98d; line-height: 1.5; }
+/* 卡牌购买经验按钮（关卡结算画面）：满级 / 积分不足为禁用态 */
+.buy-btn {
+  margin-top: 6px; width: 92%; padding: 5px 0; border-radius: 5px; cursor: pointer;
+  font-size: 12px; font-weight: bold; color: #ffd257; text-shadow: 0 1px 2px #000;
+  background: linear-gradient(180deg, #4a3418, #2a1d0c); border: 1px solid #a8873c;
+  transition: filter .1s, transform .1s;
+}
+.buy-btn:hover { filter: brightness(1.25); }
+.buy-btn:active { transform: translateY(1px); }
+.buy-btn.disabled { filter: grayscale(.75) brightness(.6); cursor: not-allowed; color: #9c8a66; }
+.buy-btn.disabled:hover { filter: grayscale(.75) brightness(.6); }
+.buy-btn.disabled:active { transform: none; }
+/* 卡牌经验条：经验满自动圣光升级 */
+.card-xp {
+  margin-top: 5px; width: 92%; height: 7px; border-radius: 4px; overflow: hidden;
+  background: #1c150a; border: 1px solid #6b5426;
+}
+.card-xp-fill {
+  height: 100%; border-radius: 3px;
+  background: linear-gradient(90deg, #b8862e, #ffd257);
+  box-shadow: 0 0 6px rgba(255, 210, 87, .55);
+  transition: width .25s;
+}
+.card-xp-text { font-size: 10.5px; color: #d8b96a; margin-top: 3px; letter-spacing: .5px; }
+
+/* ---------- 选中塔面板 ---------- */
+#tower-panel { position: absolute; left: 16px; top: 90px; width: 268px; padding: 14px 16px; }
+#tp-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+#tp-portrait {
+  width: 52px; height: 52px; border-radius: 6px; border: 2px solid #a8873c;
+  display: flex; align-items: center; justify-content: center; font-size: 27px;
+  background: linear-gradient(180deg, #221709, #33230f); text-shadow: 0 2px 4px #000;
+}
+#tp-name { font-size: 16px; font-weight: bold; color: #ffd257; }
+#tp-level { font-size: 13px; color: #f3e2b3; letter-spacing: 2px; }
+#tp-close { position: absolute; top: 8px; right: 8px; width: 26px; height: 24px; font-size: 12px; }
+#tp-stats { font-size: 13px; line-height: 1.75; color: #e8d5a3; margin: 6px 0; }
+#tp-stats .up { color: #b8d98d; }
+#tp-desc { font-size: 12px; color: #a68f5e; line-height: 1.5; }
+/* 塔面板经验条 */
+#tp-xp { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+#tp-xp-bar {
+  flex: 1; height: 9px; border-radius: 5px; overflow: hidden;
+  background: #1c150a; border: 1px solid #6b5426;
+}
+#tp-xp-fill {
+  height: 100%; border-radius: 4px;
+  background: linear-gradient(90deg, #b8862e, #ffd257);
+  box-shadow: 0 0 6px rgba(255, 210, 87, .55);
+  transition: width .25s;
+}
+#tp-xp-text { font-size: 11px; color: #d8b96a; white-space: nowrap; }
+
+/* ---------- 结算界面 ---------- */
+#end-screen {
+  position: fixed; inset: 0; background: rgba(5,4,2,.82); z-index: 50;
+  display: flex; align-items: center; justify-content: center; backdrop-filter: blur(3px);
+}
+#end-box { width: 400px; padding: 34px 36px; text-align: center; }
+#end-title { font-size: 42px; font-weight: bold; letter-spacing: 8px; margin-bottom: 8px;
+  color: #ffd257; text-shadow: 0 0 24px rgba(255,180,40,.6), 0 2px 4px #000; }
+#end-title.lose { color: #ff5d4a; text-shadow: 0 0 24px rgba(255,50,30,.6), 0 2px 4px #000; }
+#end-sub { color: #a68f5e; font-size: 14px; margin-bottom: 16px; }
+#end-stats { text-align: left; font-size: 15px; line-height: 2; margin: 0 auto 22px; width: 250px; color: #e8d5a3; }
+#end-stats b { color: #ffd257; float: right; }
+
+#pause-mask {
+  position: fixed; inset: 0; background: rgba(5,4,2,.55); z-index: 40;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 30px; color: #ffe9a8; letter-spacing: 4px; text-shadow: 0 0 14px rgba(0,0,0,.9);
+}
+
+.hidden { display: none !important; }
