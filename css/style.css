@@ -43,6 +43,7 @@ body { font-family: "Microsoft YaHei", "PingFang SC", "STHeiti", sans-serif; col
 .stat.lives { color: #ff7d6e; }
 .stat.wave  { color: #a8d8ff; }
 .stat.kills { color: #c9c9c9; }
+.stat.env { color: #9fd4c8; font-size: 15px; min-width: 0; }
 #top-bar .spacer { flex: 1; }
 
 /* ---------- 召唤波次按钮 ---------- */

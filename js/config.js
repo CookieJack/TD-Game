@@ -13,12 +13,25 @@ const CFG = {
   // 关卡结算画面用积分购买经验：每次点击花费 price 积分，为该英雄增加 xp 点经验（可连点）
   XP_BUY: { price: 40, xp: 50 },
 
-  // 地图与路径（黑暗之门 → 暴风城大门）
+  // 地图与路径
   GROUND_W: 64, GROUND_D: 44,
   PATH_WIDTH: 2.4,
-  PATH: [
-    [-24, 0], [-14, 0], [-14, -6], [-6, -6], [-6, 4], [2, 4],
-    [2, -4], [9, -4], [9, 6], [15, 6], [15, 0], [24, 0]
+
+  // 多路进攻路线：各路独立黑暗之门入场，终点全部汇合到暴风城大门 [24,0]
+  // 关卡通过 LEVELS[i].routes 决定启用前几条路线
+  ROUTES: [
+    { name: '西路', path: [
+      [-24, 0], [-14, 0], [-14, -6], [-6, -6], [-6, 4], [2, 4],
+      [2, -4], [9, -4], [9, 6], [15, 6], [15, 0], [24, 0]
+    ]},
+    { name: '北路', path: [
+      [-16, -18], [-16, -11], [-7, -11], [-7, -15], [1, -15], [1, -9],
+      [8, -9], [8, -14], [16, -14], [16, -5], [20, -5], [20, 0], [24, 0]
+    ]},
+    { name: '南路', path: [
+      [-16, 18], [-16, 11], [-7, 11], [-7, 15], [1, 15], [1, 10],
+      [8, 10], [8, 14], [16, 14], [16, 9], [21, 9], [21, 4], [24, 0]
+    ]},
   ],
   // 相机初始位：城墙斜上空，朝西俯瞰战场（可拖拽旋转 / 右键平移 / 滚轮缩放）
   CAMERA: { target: [18, 2, 0], theta: Math.PI / 2, phi: 0.9, radius: 18 },
@@ -28,6 +41,90 @@ const CFG = {
     [24.4, WALL_H, 3.55], [24.4, WALL_H, 2.45],
     [24.4, WALL_H, -2.45], [24.4, WALL_H, -3.55]
   ],
+
+  // ============ 关卡场景主题（换关时 World 重建环境层） ============
+  // weather: 每波开始时按权重抽取的天气池 [[类型, 权重], ...]；mist: 常驻地面雾强度 0~1
+  SCENES: {
+    forest: {
+      name: '翠绿林地', desc: '晨光穿过松林，黑暗之门的绿光在林间隐现。',
+      ground: 0x5d8f3d, patches: [0x557f36, 0x679a44],
+      pathTiles: [0x93866a, 0x9c8f70],
+      treeType: 'pine', trees: 26, rocks: 12,
+      rockColors: [0x8c8c88, 0x7d7d78, 0x99958c],
+      hemiGround: 0x3a5a2a, mistColor: 0xaebfd0,
+      timeStart: 8, timeLock: null,
+      weather: [['clear', 7], ['rain', 3]],
+      mist: 0
+    },
+    swamp: {
+      name: '暮色沼泽', desc: '腐烂的泥沼蒸腾着毒雾，枯树下亡灵低语。',
+      ground: 0x4a5f33, patches: [0x3d5128, 0x55703a],
+      pathTiles: [0x6e6552, 0x776e59],
+      treeType: 'dead', trees: 20, rocks: 10,
+      rockColors: [0x5f6558, 0x6b7263, 0x555a4e],
+      hemiGround: 0x2c3a22, mistColor: 0x9fb289,
+      timeStart: 14, timeLock: null,
+      weather: [['rain', 5], ['mist', 3], ['clear', 2]],
+      mist: 0.5
+    },
+    tundra: {
+      name: '霜雪平原', desc: '寒风卷起细雪，暮色正一寸寸沉入黑夜。',
+      ground: 0xdfe8f0, patches: [0xcfdce8, 0xeef4f8],
+      pathTiles: [0x9aa4ae, 0xa8b2bc],
+      treeType: 'snowPine', trees: 22, rocks: 14,
+      rockColors: [0xb8c4cc, 0xa5b1ba, 0xc8d2da],
+      hemiGround: 0x8a97a5, mistColor: 0xc4d4e2,
+      timeStart: 17, timeLock: null,
+      weather: [['snow', 6], ['clear', 4]],
+      mist: 0
+    },
+    icecrown: {
+      name: '冰封王座', desc: '永夜降临，寒冰王座之下暴雪呼啸。',
+      ground: 0xbfd4e6, patches: [0xa9c2da, 0xd2e2f0],
+      pathTiles: [0x7e93a8, 0x8ba0b5],
+      treeType: 'ice', trees: 16, rocks: 10,
+      rockColors: [0x9fb8cc, 0x8aa4bc, 0xb4cadb],
+      hemiGround: 0x6d8095, mistColor: 0xcfe0ee,
+      timeStart: 21, timeLock: 21,   // 锁定永夜
+      weather: [['snow', 4], ['blizzard', 3], ['mist', 3]],
+      mist: 0.7
+    }
+  },
+
+  // ============ 昼夜循环（time 为游戏内时刻，0-24 小时） ============
+  ENV: {
+    DAY_LENGTH: 150,      // 一昼夜现实秒数
+    FOG: { near: 75, far: 160 },
+    // 关键帧之间线性插值；sky 同时用作雾色与半球光天色，太阳在夜里转为暗蓝月光
+    // 夜段亮度以保证可玩性为准（月光 hemi≈0.32 / sunI≈0.30）
+    KEYS: [
+      { t: 0,    sky: 0x0e1830, hemi: 0.32, sunC: 0x4a6a9e, sunI: 0.30 },
+      { t: 4.5,  sky: 0x22264a, hemi: 0.34, sunC: 0x52679e, sunI: 0.32 },
+      { t: 6,    sky: 0xd98a55, hemi: 0.35, sunC: 0xff9a55, sunI: 0.50 },
+      { t: 8,    sky: 0x88b6dd, hemi: 0.50, sunC: 0xffe0b0, sunI: 0.70 },
+      { t: 13,   sky: 0x8fc0e8, hemi: 0.60, sunC: 0xfff2d8, sunI: 0.80 },
+      { t: 17,   sky: 0xe0a060, hemi: 0.45, sunC: 0xffb060, sunI: 0.55 },
+      { t: 19,   sky: 0x5a3a5e, hemi: 0.32, sunC: 0x6a5a8e, sunI: 0.30 },
+      { t: 21,   sky: 0x182642, hemi: 0.32, sunC: 0x4a6a9e, sunI: 0.30 },
+      { t: 24,   sky: 0x0e1830, hemi: 0.32, sunC: 0x4a6a9e, sunI: 0.30 }
+    ]
+  },
+
+  // ============ 天气（雨 / 雪 / 暴雪 / 雾 / 晴） ============
+  // fogMult: 乘到雾 near/far 上（越小越看不清）；gameplay 数值可在 1~0 间调，1 为无影响
+  WEATHER: {
+    TRANSITION: 5,        // 天气淡入淡出秒数
+    LIGHTNING: true,      // 雨天闪电（纯视觉）
+    clear:    { label: '晴',   icon: '☀️', fogMult: 1.0 },
+    rain:     { label: '雨',   icon: '🌧', count: 800, fall: 24, size: 0.6, fogMult: 0.72,
+                gameplay: { towerRange: 0.92, enemySpeed: 1 } },
+    snow:     { label: '雪',   icon: '🌨', count: 450, fall: 2.6, drift: 1.4, size: 0.34, fogMult: 0.8,
+                gameplay: { towerRange: 1, enemySpeed: 0.88 } },
+    blizzard: { label: '暴雪', icon: '❄️', count: 700, fall: 4.2, drift: 3.2, size: 0.42, fogMult: 0.5,
+                gameplay: { towerRange: 0.95, enemySpeed: 0.8 } },
+    mist:     { label: '雾',   icon: '🌫', fogMult: 0.4,
+                gameplay: { towerRange: 1, enemySpeed: 1 } }
+  },
 
   // ============ 英雄塔 ============
   // fx: 逐级光影档位——弹道/粒子/点光颜色随级变亮变纯，boost 放大弹体体积、光强与粒子量
@@ -127,28 +224,29 @@ const CFG = {
     lichking: { name: '巫妖王',     hp: 3400, speed: 0.75, points: 330, xp: 780, armor: 0.30, boss: true, scale: 1.9 }
   },
 
-  // ============ 波次（多组并行：type, count, gap 秒, delay 秒后开始） ============
+  // ============ 波次（多组并行：type, count, gap 秒, delay 秒后开始）
+  // route: 该组从哪条路进攻（0 西 / 1 北 / 2 南）；缺省时按当前关路线数轮转分配
   WAVES: [
     [ { type: 'murloc', count: 6, gap: 1.2, delay: 0 } ],
     [ { type: 'murloc', count: 8, gap: 1.0, delay: 0 }, { type: 'boar', count: 2, gap: 1.6, delay: 4 } ],
     [ { type: 'boar', count: 6, gap: 1.4, delay: 0 }, { type: 'murloc', count: 5, gap: 0.9, delay: 2 } ],
     [ { type: 'ghoul', count: 6, gap: 1.3, delay: 0 }, { type: 'boar', count: 4, gap: 1.5, delay: 1 } ],
     [ { type: 'ghoul', count: 6, gap: 1.2, delay: 0 }, { type: 'gargoyle', count: 5, gap: 1.0, delay: 4 } ],
-    [ { type: 'gargoyle', count: 8, gap: 0.9, delay: 0 }, { type: 'murloc', count: 8, gap: 0.8, delay: 2 } ],
-    [ { type: 'orc', count: 4, gap: 2.0, delay: 0 }, { type: 'boar', count: 6, gap: 1.2, delay: 3 } ],
-    [ { type: 'ghoul', count: 10, gap: 1.0, delay: 0 }, { type: 'gargoyle', count: 6, gap: 1.0, delay: 2 } ],
-    [ { type: 'orc', count: 6, gap: 1.8, delay: 0 }, { type: 'ghoul', count: 8, gap: 1.0, delay: 1 } ],
-    [ { type: 'murloc', count: 8, gap: 0.8, delay: 0 }, { type: 'lich', count: 1, gap: 1, delay: 5 } ],
-    [ { type: 'orc', count: 8, gap: 1.6, delay: 0 }, { type: 'gargoyle', count: 6, gap: 0.9, delay: 2 } ],
-    [ { type: 'boar', count: 12, gap: 1.0, delay: 0 }, { type: 'ghoul', count: 10, gap: 1.0, delay: 1 } ],
-    [ { type: 'orc', count: 8, gap: 1.5, delay: 0 }, { type: 'gargoyle', count: 8, gap: 0.9, delay: 2 } ],
-    [ { type: 'ghoul', count: 14, gap: 0.9, delay: 0 }, { type: 'orc', count: 6, gap: 1.6, delay: 3 } ],
-    [ { type: 'orc', count: 8, gap: 1.4, delay: 0 }, { type: 'abyssal', count: 1, gap: 1, delay: 6 } ],
-    [ { type: 'gargoyle', count: 12, gap: 0.8, delay: 0 }, { type: 'murloc', count: 12, gap: 0.6, delay: 1 } ],
-    [ { type: 'orc', count: 12, gap: 1.3, delay: 0 }, { type: 'ghoul', count: 12, gap: 0.9, delay: 2 } ],
-    [ { type: 'gargoyle', count: 10, gap: 0.8, delay: 0 }, { type: 'orc', count: 8, gap: 1.4, delay: 2 }, { type: 'ghoul', count: 10, gap: 0.9, delay: 4 } ],
-    [ { type: 'orc', count: 14, gap: 1.2, delay: 0 }, { type: 'gargoyle', count: 8, gap: 0.8, delay: 2 }, { type: 'ghoul', count: 12, gap: 0.8, delay: 4 } ],
-    [ { type: 'ghoul', count: 10, gap: 0.9, delay: 0 }, { type: 'gargoyle', count: 6, gap: 0.8, delay: 3 }, { type: 'lichking', count: 1, gap: 1, delay: 8 } ]
+    [ { type: 'gargoyle', count: 8, gap: 0.9, delay: 0, route: 0 }, { type: 'murloc', count: 8, gap: 0.8, delay: 2, route: 1 } ],
+    [ { type: 'orc', count: 4, gap: 2.0, delay: 0, route: 0 }, { type: 'boar', count: 6, gap: 1.2, delay: 3, route: 1 } ],
+    [ { type: 'ghoul', count: 10, gap: 1.0, delay: 0, route: 0 }, { type: 'gargoyle', count: 6, gap: 1.0, delay: 2, route: 1 } ],
+    [ { type: 'orc', count: 6, gap: 1.8, delay: 0, route: 0 }, { type: 'ghoul', count: 8, gap: 1.0, delay: 1, route: 1 } ],
+    [ { type: 'murloc', count: 8, gap: 0.8, delay: 0, route: 1 }, { type: 'lich', count: 1, gap: 1, delay: 5, route: 0 } ],
+    [ { type: 'orc', count: 8, gap: 1.6, delay: 0, route: 0 }, { type: 'gargoyle', count: 6, gap: 0.9, delay: 2, route: 1 } ],
+    [ { type: 'boar', count: 12, gap: 1.0, delay: 0, route: 0 }, { type: 'ghoul', count: 10, gap: 1.0, delay: 1, route: 2 } ],
+    [ { type: 'orc', count: 8, gap: 1.5, delay: 0, route: 0 }, { type: 'gargoyle', count: 8, gap: 0.9, delay: 2, route: 1 } ],
+    [ { type: 'ghoul', count: 14, gap: 0.9, delay: 0, route: 0 }, { type: 'orc', count: 6, gap: 1.6, delay: 3, route: 2 } ],
+    [ { type: 'orc', count: 8, gap: 1.4, delay: 0, route: 1 }, { type: 'abyssal', count: 1, gap: 1, delay: 6, route: 0 } ],
+    [ { type: 'gargoyle', count: 12, gap: 0.8, delay: 0, route: 0 }, { type: 'murloc', count: 12, gap: 0.6, delay: 1, route: 2 } ],
+    [ { type: 'orc', count: 12, gap: 1.3, delay: 0, route: 0 }, { type: 'ghoul', count: 12, gap: 0.9, delay: 2, route: 1 } ],
+    [ { type: 'gargoyle', count: 10, gap: 0.8, delay: 0, route: 0 }, { type: 'orc', count: 8, gap: 1.4, delay: 2, route: 1 }, { type: 'ghoul', count: 10, gap: 0.9, delay: 4, route: 2 } ],
+    [ { type: 'orc', count: 14, gap: 1.2, delay: 0, route: 0 }, { type: 'gargoyle', count: 8, gap: 0.8, delay: 2, route: 1 }, { type: 'ghoul', count: 12, gap: 0.8, delay: 4, route: 2 } ],
+    [ { type: 'ghoul', count: 10, gap: 0.9, delay: 0, route: 1 }, { type: 'gargoyle', count: 6, gap: 0.8, delay: 3, route: 2 }, { type: 'lichking', count: 1, gap: 1, delay: 8, route: 0 } ]
   ],
 
   // 波次血量成长
@@ -158,12 +256,13 @@ const CFG = {
   // 通关波次奖励
   waveBonus(wave) { return 12 + wave * 3; },
 
-  // ============ 关卡（20 波拆为 4 关，打完一关暂停结算再开下一关） ============
+  // ============ 关卡（20 波拆为 4 关，打完一关暂停结算再开下一关）
+  // scene: SCENES 主题；routes: 启用前几条进攻路线（1/2/3）
   LEVELS: [
-    { name: '第一关 · 兽人先锋',   from: 1,  to: 5 },
-    { name: '第二关 · 亡灵大军',   from: 6,  to: 10 },
-    { name: '第三关 · 燃烧军团',   from: 11, to: 15 },
-    { name: '第四关 · 巫妖王之怒', from: 16, to: 20 }
+    { name: '第一关 · 兽人先锋',   from: 1,  to: 5,  scene: 'forest',   routes: 1 },
+    { name: '第二关 · 亡灵大军',   from: 6,  to: 10, scene: 'swamp',    routes: 2 },
+    { name: '第三关 · 燃烧军团',   from: 11, to: 15, scene: 'tundra',   routes: 3 },
+    { name: '第四关 · 巫妖王之怒', from: 16, to: 20, scene: 'icecrown', routes: 3 }
   ],
   // 整关通关的积分奖励
   levelBonus(level) { return 60 + level * 40; }

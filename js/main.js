@@ -37,7 +37,7 @@ const Game = {
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x88b6dd);
-    this.scene.fog = new THREE.Fog(0x88b6dd, 75, 160);
+    this.scene.fog = new THREE.Fog(0x88b6dd, CFG.ENV.FOG.near, CFG.ENV.FOG.far);   // 昼夜/天气由 Env 每帧驱动
 
     this.camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 300);
     this.cam = new CamControls(this.camera, this.renderer.domElement);
@@ -47,6 +47,8 @@ const Game = {
 
     World.init(this.scene);
     FX.init(this.scene);
+    Env.init(this.scene);
+    Env.setScene(CFG.SCENES[CFG.LEVELS[0].scene]);
     UI.init(this);
 
     // Bloom 辉光后处理（CFG.FX.bloom.enabled 可整体关闭回退直渲）
@@ -86,12 +88,14 @@ const Game = {
       if (!this.state.paused && ph !== 'over') {
         const sdt = dt * this.state.speed;
         this.time += sdt;
+        Env.update(sdt);                // 昼夜/天气在布阵、结算阶段也流动
         FX.update(sdt);                 // 特效在布阵/结算阶段也保持（升级特效不再冻结）
         this._updateTowers(sdt);        // 英雄待机/施法动画（场上无敌人时只会空转待机）
+        World.update(sdt, this.time);
+        UI.setEnv();
         if (ph !== 'inter' && ph !== 'arrange') {
           this._updateWaves(sdt);
           this._updateEnemies(sdt);
-          World.update(sdt, this.time);
         }
       }
       if (this.composer) this.composer.render();
@@ -296,10 +300,14 @@ const Game = {
     this.state.wave++;
     const def = CFG.WAVES[this.state.wave - 1];
     const mult = CFG.hpMult(this.state.wave);
+    const lv = CFG.LEVELS[this.state.level - 1];
     this.spawnQueue = [];
+    let rr = 0;
     for (const grp of def) {
+      // 组未指派路线时按当前关路线数轮转分配
+      const route = grp.route !== undefined ? grp.route : (rr++ % (lv.routes || 1));
       for (let i = 0; i < grp.count; i++) {
-        this.spawnQueue.push({ type: grp.type, at: grp.delay + i * grp.gap, mult });
+        this.spawnQueue.push({ type: grp.type, at: grp.delay + i * grp.gap, mult, route });
       }
     }
     this.spawnQueue.sort((a, b) => a.at - b.at);
@@ -308,12 +316,17 @@ const Game = {
     UI.showWaveButton(null);
     UI.setWave(this.state.wave);
 
+    // 每波按场景天气池换一轮天气
+    Env.rollWeather();
+    const w = CFG.WEATHER[Env.weather];
+    const wx = `　${w.icon} ${w.label}`;
+
     const bossNames = { 10: '巫妖', 15: '深渊火魔王', 20: '巫妖王' };
     if (bossNames[this.state.wave]) {
-      UI.banner(`⚔ 第 ${this.state.wave} 波 — ${bossNames[this.state.wave]} 现身！`, true);
+      UI.banner(`⚔ 第 ${this.state.wave} 波 — ${bossNames[this.state.wave]} 现身！${wx}`, true);
       AudioSys.play('boss_horn');
     } else {
-      UI.banner(`⚔ 第 ${this.state.wave} 波来袭`);
+      UI.banner(`⚔ 第 ${this.state.wave} 波来袭${wx}`);
       AudioSys.play('horn');
     }
   },
@@ -331,7 +344,7 @@ const Game = {
     this.waveClock += dt;
     while (this.spawnQueue.length && this.spawnQueue[0].at <= this.waveClock) {
       const s = this.spawnQueue.shift();
-      this._spawnEnemy(s.type, s.mult);
+      this._spawnEnemy(s.type, s.mult, s.route || 0);
     }
     // 波次通关判定
     if (!this.spawnQueue.length && !this.enemies.length) {
@@ -360,14 +373,17 @@ const Game = {
   },
 
   /* ================= 敌人 ================= */
-  _spawnEnemy(type, mult) {
+  _spawnEnemy(type, mult, route = 0) {
     const cfg = CFG.ENEMIES[type];
     const mesh = Characters.buildEnemy(type);
     mesh.scale.setScalar(cfg.scale);
     mesh.userData.baseScale = cfg.scale;
-    const p = World.track.pointAt(0);
+    const track = World.tracks[route] || World.tracks[0];
+    const p = track.pointAt(0);
     mesh.position.set(p.x, cfg.flying ? 2.4 : 0, p.z);
     this.scene.add(mesh);
+    World.pulsePortal(route);   // 传送门光晕脉冲 + 出怪粒子
+    FX.burst(new THREE.Vector3(p.x, 1.6, p.z), 0x6effa0, { count: 8, speed: 2.5, life: 0.5, gravity: 0 });
 
     // 头顶血条
     const bar = new THREE.Group();
@@ -396,6 +412,7 @@ const Game = {
     this.enemies.push({
       type, cfg, mesh, barBg: bg, barFg: fg, barW: bw,
       hp: cfg.hp * mult, maxHp: cfg.hp * mult,
+      track, progress: 0,        // progress = dist/track.length，跨路线可比（索敌用）
       dist: 0, alive: true,
       slowUntil: 0, slowFactor: 0, stunUntil: 0, dots: [],
       animT: mesh.userData.animOffset || 0,   // 动画时间按实际移速积累：减速步态变慢、眩晕定格
@@ -406,7 +423,6 @@ const Game = {
   },
 
   _updateEnemies(dt) {
-    const track = World.track;
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const e = this.enemies[i];
 
@@ -427,15 +443,17 @@ const Game = {
       }
       if (e.hp <= 0) { this._killEnemy(e, dotSrc); continue; }
 
-      // 移动（眩晕 / 减速）
+      // 移动（眩晕 / 减速 / 天气：雪与暴雪只拖慢地面单位，飞行单位不受影响）
       const stunned = this.time < e.stunUntil;
       const slowed = this.time < e.slowUntil;
-      const eff = stunned ? 0 : e.cfg.speed * (slowed ? 1 - e.slowFactor : 1);
+      const weatherSlow = e.cfg.flying ? 1 : Env.play.enemySpeedMult;
+      const eff = stunned ? 0 : e.cfg.speed * (slowed ? 1 - e.slowFactor : 1) * weatherSlow;
       e.dist += eff * dt;
-      if (e.dist >= track.length) { this._leak(e); continue; }
+      if (e.dist >= e.track.length) { this._leak(e); continue; }
 
-      const p = track.pointAt(e.dist);
-      const p2 = track.pointAt(Math.min(e.dist + 0.45, track.length));
+      e.progress = e.dist / e.track.length;
+      const p = e.track.pointAt(e.dist);
+      const p2 = e.track.pointAt(Math.min(e.dist + 0.45, e.track.length));
       e.mesh.position.set(p.x, e.yOff, p.z);
       if (e.cfg.flying) e.mesh.position.y = 2.4 + Math.sin(this.time * 3 + e.mesh.userData.animOffset) * 0.18;
       e.mesh.rotation.y = Math.atan2(p2.x - p.x, p2.z - p.z);
@@ -569,7 +587,8 @@ const Game = {
     this.enemies.splice(this.enemies.indexOf(e), 1);
     this.state.lives--;
     UI.setLives(this.state.lives);
-    const gate = new THREE.Vector3(22.5, 2, 0);
+    const end = e.track.pointAt(e.track.length - 1.5);
+    const gate = new THREE.Vector3(end.x, 2, end.z);
     FX.burst(gate, 0xff4a3a, { count: 14, speed: 4, life: 0.6 });
     FX.floatText(gate, '-1 ❤', '#ff7d6e', 1.2);
     AudioSys.play('leak');
@@ -598,11 +617,13 @@ const Game = {
   },
 
   _findTarget(tower, range) {
-    let best = null, bestDist = -1;
+    range *= Env.play.towerRangeMult;   // 天气影响射程（雨天略降，config 可调）
+    let best = null, bestProgress = -1;
     for (const e of this.enemies) {
       if (!e.alive) continue;
       if (Utils.distXZ(tower.plot.x, tower.plot.z, e.mesh.position.x, e.mesh.position.z) > range) continue;
-      if (e.dist > bestDist) { bestDist = e.dist; best = e; }
+      // 多路线长度不同，按进度（而非里程）选最靠前的敌人
+      if (e.progress > bestProgress) { bestProgress = e.progress; best = e; }
     }
     return best;
   },
@@ -787,16 +808,37 @@ const Game = {
     UI.setHint(HINT_DEFAULT);
   },
 
-  // 关卡结算界面：开启下一关
+  // 关卡结算界面：开启下一关（重建场景主题环境，解锁更多路线）
   nextLevel() {
     if (this.state.phase !== 'inter') return;
+    const prevRoutes = CFG.LEVELS[this.state.level - 1].routes || 1;
     this.state.level++;
+    const lv = CFG.LEVELS[this.state.level - 1];
+    World.build(this.state.level - 1);
+    Env.setScene(CFG.SCENES[lv.scene]);
     this.state.phase = 'build';
     this.waveTimer = Infinity;
     UI.hideLevelScreen();
-    UI.showWaveButton(`⚔ 开始 ${CFG.LEVELS[this.state.level - 1].name}`, 0);
+    UI.showWaveButton(`⚔ 开始 ${lv.name}`, 0);
     UI.setWave(this.state.wave);
     UI.setHint(HINT_DEFAULT);
+    // 新路线开启提示
+    const nowRoutes = lv.routes || 1;
+    if (nowRoutes > prevRoutes) {
+      const names = CFG.ROUTES.slice(prevRoutes, nowRoutes).map(r => r.name).join('、');
+      UI.banner(`🚪 ${names}黑暗之门开启！兵分多路来袭！`);
+      AudioSys.play('boss_horn');
+    }
+  },
+
+  /* ================= 调试热键（T：时刻+4h　W：切换天气） ================= */
+  debugTime() {
+    Env.setTime(Env.time + 4);
+    UI.toast(`时刻跳转 ⏰ ${Env.clockLabel()}`);
+  },
+  debugWeather() {
+    const w = Env.cycleWeather();
+    UI.toast(`天气切换 ${CFG.WEATHER[w].icon} ${CFG.WEATHER[w].label}`);
   },
 
   /* ================= 通用按钮 ================= */

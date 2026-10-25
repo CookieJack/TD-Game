@@ -97,9 +97,13 @@ const UI = {
     const lv = this.game.state.level;
     const level = CFG.LEVELS[lv - 1];
     const next = CFG.LEVELS[lv] ? `　·　下一关：${CFG.LEVELS[lv].name}` : '';
+    const nextScene = CFG.LEVELS[lv] ? CFG.SCENES[CFG.LEVELS[lv].scene] : null;
+    const sceneLine = nextScene
+      ? `<br><span style="color:#8fa8c8">🗺 下一片战场：${nextScene.name} —— ${nextScene.desc}</span>`
+      : '';
     document.getElementById('level-title').textContent = `${level.name} 完成！`;
     document.getElementById('level-sub').innerHTML =
-      `当前积分 🏅<span id="level-points">${this.game.state.points}</span>　·　积分可为英雄购买经验，点击两张卡可交换站位${next}`;
+      `当前积分 🏅<span id="level-points">${this.game.state.points}</span>　·　积分可为英雄购买经验，点击两张卡可交换站位${next}${sceneLine}`;
     document.getElementById('btn-next-level').textContent =
       CFG.LEVELS[lv] ? `▶ 开启 ${CFG.LEVELS[lv].name}` : '▶ 开启下一关';
     this._renderSquad(document.getElementById('squad-level'), true);
@@ -125,6 +129,8 @@ const UI = {
       if (k === 'Escape') { g.deselectTower(); this._clearSel(); }
       else if (k === ' ') { e.preventDefault(); g.callNextWave(); }
       else if (k === 'p' || k === 'P') g.togglePause();
+      else if (k === 't' || k === 'T') g.debugTime();       // 调试：时刻 +4h
+      else if (k === 'w' || k === 'W') g.debugWeather();    // 调试：切换天气
     });
   },
 
@@ -144,6 +150,12 @@ const UI = {
     document.getElementById('wave-value').textContent = `${lv.name.split(' ')[0]} 波 ${inLevel}/${lv.to - lv.from + 1}`;
   },
   setKills(v) { document.getElementById('kills-value').textContent = v; },
+  // 顶栏环境状态片：天气 + 昼夜时钟（内容不变时跳过写 DOM）
+  setEnv() {
+    const text = `${Env.weatherLabel()} · ${Env.clockLabel()}`;
+    const el = document.getElementById('env-value');
+    if (el.textContent !== text) el.textContent = text;
+  },
   setSpeedLabel(x) { document.getElementById('btn-speed').textContent = `▶ ${x}x`; },
   setPauseLabel(paused) {
     document.getElementById('btn-pause').textContent = paused ? '▶' : '⏸';
