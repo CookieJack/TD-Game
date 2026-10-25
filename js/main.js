@@ -92,6 +92,7 @@ const Game = {
         FX.update(sdt);                 // 特效在布阵/结算阶段也保持（升级特效不再冻结）
         this._updateTowers(sdt);        // 英雄待机/施法动画（场上无敌人时只会空转待机）
         World.update(sdt, this.time);
+        FX.updateEnemyLights(this.enemies, sdt);   // 怪物夜光跟随（布阵/结算阶段也跑，灯光平滑熄灭）
         UI.setEnv();
         if (ph !== 'inter' && ph !== 'arrange') {
           this._updateWaves(sdt);
@@ -409,6 +410,13 @@ const Game = {
     dotIcon.visible = false;
     mesh.add(dotIcon);
 
+    // 夜光光晕：加色贴片随本体移动，死亡时随 mesh 一起移除
+    const glowCfg = CFG.ENEMY_GLOW;
+    const halo = FX.makeGlow(glowCfg.colors[type] || glowCfg.color, cfg.boss ? glowCfg.haloBoss : glowCfg.halo, 1.0);
+    halo.material.opacity = glowCfg.haloOpacity;
+    halo.position.y = (mesh.userData.height || 1.2) * 0.55;
+    mesh.add(halo);
+
     this.enemies.push({
       type, cfg, mesh, barBg: bg, barFg: fg, barW: bw,
       hp: cfg.hp * mult, maxHp: cfg.hp * mult,
@@ -489,10 +497,26 @@ const Game = {
   // src：伤害来源英雄类型（击杀经验归击杀者）
   damageEnemy(e, amount, src) {
     if (!e.alive) return;
+    const crit = Math.random() < CFG.CRIT.chance;
+    if (crit) amount *= CFG.CRIT.mult;
     const dmg = amount * (1 - (e.cfg.armor || 0));
     e.hp -= dmg;
     FX.punch(e.mesh);
+    this._damageText(e, dmg, crit);
     if (e.hp <= 0) this._killEnemy(e, src);
+  },
+
+  // 伤害飘字：白色小字为普通命中，红色大字为暴击（护甲减免后的实际扣血），与击杀金色加分飘字区分
+  _damageText(e, dmg, crit) {
+    const pos = e.mesh.position.clone();
+    pos.y += e.yOff + (crit ? 1.15 : 0.8);
+    pos.x += (Math.random() - 0.5) * 0.7;   // 溅射/AoE 多目标同帧飘字错开
+    if (crit) {
+      FX.floatText(pos, `暴击 ${Math.round(dmg)}`, '#ff4a2a', 1.5);
+      FX.burst(e.mesh.position.clone(), 0xff5a2a, { count: 6, speed: 3, life: 0.35 });
+    } else {
+      FX.floatText(pos, `${Math.round(dmg)}`, '#f0e6d2', 0.8);
+    }
   },
 
   _killEnemy(e, src) {
@@ -782,8 +806,12 @@ const Game = {
           FX.light(pos, fx.color, { intensity: 1.6 * fx.boost, dist: 4.5 });
           FX.groundGlow(pos, fx.color, 1.2, 0.5);
           if (target.alive) {
-            target.dots.push({ dps: (lv.dot * mult) / 5, until: this.time + 5, src: 'priest' });
+            // 暗言术攻击同样参与暴击：暴击时整段 DoT 总伤害翻倍
+            const crit = Math.random() < CFG.CRIT.chance;
+            const total = lv.dot * mult * (crit ? CFG.CRIT.mult : 1);
+            target.dots.push({ dps: total / 5, until: this.time + 5, src: 'priest' });
             if (target.dots.length > 4) target.dots.shift();
+            this._damageText(target, total, crit);
           }
           AudioSys.play('hit');
         }

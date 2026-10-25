@@ -37,9 +37,10 @@ const CFG = {
   CAMERA: { target: [18, 2, 0], theta: Math.PI / 2, phi: 0.9, radius: 18 },
 
   // 4 个英雄站位：暴风城大门城墙顶一字排开（门洞两侧各 2 座，按站位 1→4 从北到南）
+  // 中间两位须避开城门头横梁（z 半长 2.65），故整体外扩
   PLOTS: [
-    [24.4, WALL_H, 3.55], [24.4, WALL_H, 2.45],
-    [24.4, WALL_H, -2.45], [24.4, WALL_H, -3.55]
+    [24.4, WALL_H, 4.7], [24.4, WALL_H, 3.5],
+    [24.4, WALL_H, -3.5], [24.4, WALL_H, -4.7]
   ],
 
   // ============ 关卡场景主题（换关时 World 重建环境层） ============
@@ -212,7 +213,11 @@ const CFG = {
     light: { intensity: 2.2, dist: 7.5, life: 0.35 }   // 点光闪光默认参数
   },
 
+  // ============ 暴击（英雄攻击命中时概率造成倍率伤害） ============
+  CRIT: { chance: 0.15, mult: 2 },
+
   // ============ 敌人（points 为战绩分数，xp 为击杀者获得的经验） ============
+  // ownLight：模型自带点光（深渊火魔王 / 巫妖王），不再占用怪物夜光灯光池
   ENEMIES: {
     murloc:   { name: '鱼人',       hp: 32,   speed: 2.30, points: 8,   xp: 15,  scale: 0.95 },
     boar:     { name: '野猪',       hp: 60,   speed: 1.70, points: 10,  xp: 20,  scale: 1.0  },
@@ -220,8 +225,21 @@ const CFG = {
     gargoyle: { name: '石像鬼',     hp: 52,   speed: 2.90, points: 13,  xp: 26,  scale: 0.9, flying: true },
     orc:      { name: '兽人步兵',   hp: 185,  speed: 1.15, points: 20,  xp: 42,  armor: 0.25, scale: 1.2 },
     lich:     { name: '巫妖',       hp: 560,  speed: 1.05, points: 70,  xp: 165, armor: 0.15, boss: true, scale: 1.35 },
-    abyssal:  { name: '深渊火魔王', hp: 1500, speed: 0.85, points: 150, xp: 360, armor: 0.30, boss: true, scale: 1.7 },
-    lichking: { name: '巫妖王',     hp: 3400, speed: 0.75, points: 330, xp: 780, armor: 0.30, boss: true, scale: 1.9 }
+    abyssal:  { name: '深渊火魔王', hp: 1500, speed: 0.85, points: 150, xp: 360, armor: 0.30, boss: true, scale: 1.7, ownLight: true },
+    lichking: { name: '巫妖王',     hp: 3400, speed: 0.75, points: 330, xp: 780,  armor: 0.30, boss: true, scale: 1.9, ownLight: true }
+  },
+
+  // ============ 怪物夜光（黑夜出怪可见 + 照亮周围地面） ============
+  // 灯光为常驻池（intensity 0，避免运行时增删触发 shader 重编译），按出怪顺序分配给前 pool 只怪；
+  // intensity 按 Env.night 缩放：白天极弱、黑夜全亮。halo 为挂在怪物身上的加色光晕贴片缩放
+  ENEMY_GLOW: {
+    pool: 8, intensity: 1.1, dist: 5.5,
+    halo: 1.5, haloBoss: 2.6, haloOpacity: 0.4,
+    color: 0xbfe8d0,
+    colors: {
+      murloc: 0x53d769, boar: 0xd8a05a, ghoul: 0x8fe86b,
+      gargoyle: 0x9a7bff, orc: 0xff8a4a, lich: 0x6fe8ff
+    }
   },
 
   // ============ 波次（多组并行：type, count, gap 秒, delay 秒后开始）

@@ -429,10 +429,10 @@ const World = {
       g.add(pole);
     }
 
-    // 火炬
-    for (const sz of [-3.1, 3.1]) {
+    // 火炬（立于门外墙面前侧，避开门前汇合的南北两路行军线）
+    for (const sz of [-3.6, 3.6]) {
       const post = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.12, 2.2, 5), MatCache.get(0x5a4226));
-      post.position.set(2.2, 1.1, sz);
+      post.position.set(-1.2, 1.1, sz);
       g.add(post);
       const flameMat = new THREE.MeshBasicMaterial({ color: 0xffa63d });
       flameMat.color.multiplyScalar(1.5);   // 配 Bloom 轻微泛光
@@ -440,10 +440,10 @@ const World = {
         new THREE.ConeGeometry(0.22, 0.55, 6),
         flameMat
       );
-      flame.position.set(2.2, 2.4, sz);
+      flame.position.set(-1.2, 2.4, sz);
       g.add(flame);
       const tl = new THREE.PointLight(0xff9a3d, 0.9, 9);
-      tl.position.set(2.2, 2.6, sz);
+      tl.position.set(-1.2, 2.6, sz);
       g.add(tl);
       this._torchLights.push({ light: tl, flame, seed: Utils.rand(0, 10) });
     }

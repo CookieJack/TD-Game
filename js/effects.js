@@ -10,6 +10,7 @@ const FX = {
   _punches: [],
   _glowTex: null,
   _lights: [], _decals: [], _flashes: [], _pillars: [], _beams: [],
+  _enemyLights: [],
   _geo: null, _snowTex: null,
 
   init(scene) {
@@ -57,6 +58,13 @@ const FX = {
       const l = new THREE.PointLight(0xffffff, 0, 7.5, 2);
       scene.add(l);
       this._lights.push({ light: l, life: 0, max: 1, peak: 2 });
+    }
+
+    // 怪物夜光灯光池（同样常驻 intensity 0，按出怪顺序分配给活着的怪）
+    for (let i = 0; i < CFG.ENEMY_GLOW.pool; i++) {
+      const l = new THREE.PointLight(CFG.ENEMY_GLOW.color, 0, CFG.ENEMY_GLOW.dist, 2);
+      scene.add(l);
+      this._enemyLights.push(l);
     }
 
     // 地面光斑池（加色径向渐变贴花）
@@ -140,6 +148,26 @@ const FX = {
     s.material.color.multiplyScalar(boost);
     s.scale.setScalar(scale);
     return s;
+  },
+
+  /* 怪物夜光：按出怪顺序把常驻灯光池分配给活着的怪（白天极弱、黑夜全亮；无怪时平滑熄灭） */
+  updateEnemyLights(enemies, dt) {
+    const cfg = CFG.ENEMY_GLOW;
+    const nightK = 0.35 + 0.65 * (Env.night || 0);
+    const lerp = Math.min(1, dt * 8);
+    let i = 0;
+    for (const e of enemies) {
+      if (e.cfg.ownLight || i >= this._enemyLights.length) continue;
+      const l = this._enemyLights[i++];
+      l.color.setHex(cfg.colors[e.type] || cfg.color);
+      const h = e.mesh.userData.height || 1.2;
+      l.position.set(e.mesh.position.x, e.mesh.position.y + h * 0.7, e.mesh.position.z);
+      l.intensity += (cfg.intensity * nightK - l.intensity) * lerp;
+    }
+    for (; i < this._enemyLights.length; i++) {
+      const l = this._enemyLights[i];
+      l.intensity += (0 - l.intensity) * lerp;
+    }
   },
 
   /* 六角雪花纹理（减速状态图标用） */
