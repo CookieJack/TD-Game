@@ -318,8 +318,8 @@ const UI = {
     title.textContent = win ? '胜 利' : '失 败';
     title.classList.toggle('lose', !win);
     document.getElementById('end-sub').textContent = win
-      ? '巫妖王已被击败，艾泽拉斯恢复和平！'
-      : '暴风城陷落了……集结英雄，再次防守！';
+      ? '亡灵之王已被击败，王国恢复和平！'
+      : '王城陷落了……集结英雄，再次防守！';
     document.getElementById('end-stats').innerHTML = `
       <div>坚守波次 <b>${stats.wave} / ${CFG.TOTAL_WAVES}</b></div>
       <div>消灭敌人 <b>${stats.kills}</b></div>

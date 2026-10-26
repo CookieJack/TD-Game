@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>艾泽拉斯守护战 — 3D塔防</title>
+<title>王城保卫战 — 3D塔防</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -11,20 +11,20 @@
 
 <div id="ui-root">
   <!-- 顶部状态栏 -->
-  <div id="top-bar" class="wow-panel">
+  <div id="top-bar" class="ui-panel">
     <div class="stat points"><span class="stat-icon">🏅</span><span id="points-value">0</span></div>
     <div class="stat lives"><span class="stat-icon">❤️</span><span id="lives-value">20</span></div>
     <div class="stat wave"><span class="stat-icon">⚔️</span><span id="wave-value">第一关 波 0/5</span></div>
     <div class="stat kills"><span class="stat-icon">💀</span><span id="kills-value">0</span></div>
     <div class="stat env"><span id="env-value">☀️ 晴 · 08:00</span></div>
     <div class="spacer"></div>
-    <button id="btn-pause" class="wow-btn square" title="暂停 (P)">⏸</button>
-    <button id="btn-speed" class="wow-btn" title="游戏速度">▶ 1x</button>
-    <button id="btn-mute" class="wow-btn square" title="音效开关">🔊</button>
+    <button id="btn-pause" class="ui-btn square" title="暂停 (P)">⏸</button>
+    <button id="btn-speed" class="ui-btn" title="游戏速度">▶ 1x</button>
+    <button id="btn-mute" class="ui-btn square" title="音效开关">🔊</button>
   </div>
 
   <!-- 召唤下一波按钮 -->
-  <button id="btn-wave" class="wow-btn big hidden">⚔ 开始第 1 波</button>
+  <button id="btn-wave" class="ui-btn big hidden">⚔ 开始第 1 波</button>
   <div id="wave-timer" class="hidden"></div>
 
   <!-- 波次横幅 -->
@@ -34,14 +34,14 @@
   <div id="toast" class="hidden"></div>
 
   <!-- 选中塔面板（仅查看属性） -->
-  <div id="tower-panel" class="wow-panel hidden">
+  <div id="tower-panel" class="ui-panel hidden">
     <div id="tp-head">
       <div id="tp-portrait"></div>
       <div>
         <div id="tp-name">亡灵法师</div>
         <div id="tp-level">★☆☆☆</div>
       </div>
-      <button id="tp-close" class="wow-btn square">✕</button>
+      <button id="tp-close" class="ui-btn square">✕</button>
     </div>
     <div id="tp-stats"></div>
     <div id="tp-desc"></div>
@@ -60,32 +60,32 @@
 
   <!-- 英雄布阵界面 -->
   <div id="arrange-screen" class="screen hidden">
-    <div class="wow-panel screen-box">
+    <div class="ui-panel screen-box">
       <div class="screen-title">英雄布阵</div>
-      <div class="screen-sub">四位英雄驻守暴风城大门城墙 —— 点击两张卡牌交换站位</div>
+      <div class="screen-sub">四位英雄驻守王城大门城墙 —— 点击两张卡牌交换站位</div>
       <div id="squad-arrange" class="squad-row"></div>
-      <button id="btn-start-game" class="wow-btn big">▶ 开始第 1 关</button>
+      <button id="btn-start-game" class="ui-btn big">▶ 开始第 1 关</button>
     </div>
   </div>
 
   <!-- 关卡结算界面 -->
   <div id="level-screen" class="screen hidden">
-    <div class="wow-panel screen-box">
+    <div class="ui-panel screen-box">
       <div class="screen-title" id="level-title">第一关 完成！</div>
       <div class="screen-sub" id="level-sub"></div>
       <div id="squad-level" class="squad-row"></div>
       <div class="screen-hint">✨ 击杀获得经验，经验条满自动圣光升级　·　🏅 积分可为英雄购买经验　·　点击两张卡交换站位</div>
-      <button id="btn-next-level" class="wow-btn big">▶ 开启下一关</button>
+      <button id="btn-next-level" class="ui-btn big">▶ 开启下一关</button>
     </div>
   </div>
 
   <!-- 结算界面 -->
   <div id="end-screen" class="hidden">
-    <div id="end-box" class="wow-panel">
+    <div id="end-box" class="ui-panel">
       <div id="end-title">胜利</div>
       <div id="end-sub"></div>
       <div id="end-stats"></div>
-      <button id="btn-restart" class="wow-btn big">🔁 再来一局</button>
+      <button id="btn-restart" class="ui-btn big">🔁 再来一局</button>
     </div>
   </div>
 

@@ -1,4 +1,4 @@
-/* ============ 3D 场景：地形 / 道路 / 黑暗之门 / 暴风城大门 / 建造基座 ============ */
+/* ============ 3D 场景：地形 / 道路 / 传送门 / 王城大门 / 建造基座 ============ */
 /* 环境层（地面/道路/装饰/传送门）按关卡主题可整体重建：World.build(levelIdx) */
 const MatCache = {
   _m: {},
@@ -282,7 +282,7 @@ const World = {
     return tree;
   },
 
-  /* ---------- 黑暗之门（每条路线一座，朝向各自入场方向） ---------- */
+  /* ---------- 传送门（每条路线一座，朝向各自入场方向） ---------- */
   _darkPortal(env, routeIdx) {
     const tr = this.tracks[routeIdx];
     const p0 = tr.pts[0], p1 = tr.pts[1];
@@ -378,7 +378,7 @@ const World = {
     return new THREE.Vector3(fx.group.position.x, 2.2, fx.group.position.z);
   },
 
-  /* ---------- 暴风城大门（终点，一次构建） ---------- */
+  /* ---------- 王城大门（终点，一次构建） ---------- */
   _stormwindGate(scene) {
     const g = new THREE.Group();
     const white = MatCache.get(0xd8d3c4);

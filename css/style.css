@@ -1,4 +1,4 @@
-/* ============ 艾泽拉斯守护战 — 魔兽风格 UI ============ */
+/* ============ 王城保卫战 — 奇幻风格 UI ============ */
 * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
 html, body { width: 100%; height: 100%; overflow: hidden; background: #0b0e12; }
 body { font-family: "Microsoft YaHei", "PingFang SC", "STHeiti", sans-serif; color: #e8d5a3; }
@@ -9,15 +9,15 @@ body { font-family: "Microsoft YaHei", "PingFang SC", "STHeiti", sans-serif; col
 #ui-root { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
 #ui-root > * { pointer-events: auto; }
 
-/* ---------- 魔兽面板通用样式 ---------- */
-.wow-panel {
+/* ---------- 金色面板通用样式 ---------- */
+.ui-panel {
   background: linear-gradient(180deg, rgba(28,20,12,.94) 0%, rgba(46,32,18,.96) 55%, rgba(20,14,8,.96) 100%);
   border: 2px solid #6b5426;
   border-radius: 8px;
   box-shadow: 0 0 0 1px #17110a inset, 0 0 0 3px #a8873c inset, 0 6px 24px rgba(0,0,0,.7);
   position: relative;
 }
-.wow-btn {
+.ui-btn {
   font-family: inherit; color: #f3e2b3; font-size: 14px; font-weight: bold;
   background: linear-gradient(180deg, #4a3418 0%, #6d5223 50%, #3a2a12 100%);
   border: 1px solid #a8873c; border-radius: 5px; padding: 6px 14px; cursor: pointer;
@@ -25,25 +25,29 @@ body { font-family: "Microsoft YaHei", "PingFang SC", "STHeiti", sans-serif; col
   box-shadow: 0 0 0 1px #17110a inset;
   transition: filter .12s, transform .05s;
 }
-.wow-btn:hover { filter: brightness(1.25); }
-.wow-btn:active { transform: translateY(1px); }
-.wow-btn:disabled { filter: grayscale(.8) brightness(.6); cursor: not-allowed; }
-.wow-btn.square { width: 34px; height: 30px; padding: 0; text-align: center; }
-.wow-btn.big { font-size: 17px; padding: 10px 30px; }
+.ui-btn:hover { filter: brightness(1.25); }
+.ui-btn:active { transform: translateY(1px); }
+.ui-btn:disabled { filter: grayscale(.8) brightness(.6); cursor: not-allowed; }
+.ui-btn.square { width: 34px; height: 30px; padding: 0; text-align: center; }
+.ui-btn.big { font-size: 17px; padding: 10px 30px; }
 
 /* ---------- 顶部状态栏 ---------- */
 #top-bar {
   position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
-  display: flex; align-items: center; gap: 18px; padding: 8px 20px; min-width: 560px;
+  display: flex; align-items: center; gap: 12px; padding: 8px 14px;
+  width: 700px; max-width: calc(100vw - 16px);   /* 栏宽固定：数值变化不再改变栏宽导致抖动 */
 }
 .stat { display: flex; align-items: center; gap: 6px; font-size: 18px; font-weight: bold;
-  text-shadow: 0 0 6px rgba(0,0,0,.9), 0 1px 2px #000; min-width: 70px; }
+  text-shadow: 0 0 6px rgba(0,0,0,.9), 0 1px 2px #000; min-width: 70px;
+  flex: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .stat .stat-icon { font-size: 19px; filter: drop-shadow(0 0 4px rgba(0,0,0,.8)); }
 .stat.points { color: #ffd257; }
 .stat.lives { color: #ff7d6e; }
-.stat.wave  { color: #a8d8ff; }
+.stat.wave  { color: #a8d8ff; min-width: 124px; }   /* 预留"第四关 波 12/5"宽度，不挤压邻居 */
 .stat.kills { color: #c9c9c9; }
-.stat.env { color: #9fd4c8; font-size: 15px; min-width: 0; }
+.stat.env { color: #9fd4c8; font-size: 15px; min-width: 100px; justify-content: flex-start; }
+/* 极窄窗口：隐藏非关键的天气/时间槽，保证右侧按钮完整 */
+@media (max-width: 720px) { .stat.env { display: none; } }
 #top-bar .spacer { flex: 1; }
 
 /* ---------- 召唤波次按钮 ---------- */
@@ -110,7 +114,7 @@ body { font-family: "Microsoft YaHei", "PingFang SC", "STHeiti", sans-serif; col
   color: #ffd257; text-shadow: 0 0 20px rgba(255,180,40,.55), 0 2px 4px #000; }
 .screen-sub { color: #a68f5e; font-size: 14px; margin-bottom: 16px; }
 .screen-hint { color: #8a744a; font-size: 12.5px; margin: 12px 0 0; }
-.screen .wow-btn.big { margin-top: 16px; }
+.screen .ui-btn.big { margin-top: 16px; }
 
 .squad-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
 .squad-card {

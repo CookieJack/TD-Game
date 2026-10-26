@@ -1,7 +1,7 @@
 /* ============ 游戏核心：状态机 / 战斗 / 交互 / 主循环 ============ */
 const HINT_DEFAULT = '点击英雄查看技能与射程　|　1-4：英雄群攻技能　|　左键拖拽旋转视角　|　右键平移　|　滚轮缩放　|　空格：下一波　Esc：取消';
 const SLOW_TINT = new THREE.Color(0x9fd4ff);   // 减速冰蓝染色
-const POISON_COLOR = 0x7ed957;                 // 毒箭毒雾/状态图标（区别于暗言术紫）
+const POISON_COLOR = 0x7ed957;                 // 毒箭毒雾/状态图标（区别于暗影紫）
 
 /* 运行时画一把 32×32 剑生成光标（PNG data URI，各浏览器通用；热点在剑尖，落点与系统箭头一致） */
 function makeSwordCursor() {
@@ -478,7 +478,7 @@ const Game = {
     const w = CFG.WEATHER[Env.weather];
     const wx = `　${w.icon} ${w.label}`;
 
-    const bossNames = { 10: '巫妖', 15: '深渊火魔王', 20: '巫妖王' };
+    const bossNames = { 10: '巫妖', 15: '深渊火魔王', 20: '亡灵之王' };
     if (bossNames[this.state.wave]) {
       UI.banner(`⚔ 第 ${this.state.wave} 波 — ${bossNames[this.state.wave]} 现身！${wx}`, true);
       AudioSys.play('boss_horn');
@@ -554,7 +554,7 @@ const Game = {
     hpBar.group.position.y = mesh.userData.height + 0.55;
     mesh.add(hpBar.group);
 
-    // 状态图标（雪花 = 减速；光点 = 持续伤害：暗言术紫 / 毒箭绿）
+    // 状态图标（雪花 = 减速；光点 = 持续伤害：暗影紫 / 毒箭绿）
     const slowIcon = FX.makeSnow(0xbfe6ff, 0.55);
     slowIcon.position.set(0.42, mesh.userData.height + 0.32, 0);
     slowIcon.visible = false;
@@ -591,7 +591,7 @@ const Game = {
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const e = this.enemies[i];
 
-      // DoT（暗言术：痛，击杀经验归牧师）
+      // DoT（暗影侵蚀，击杀经验归牧师）
       let dotSrc = null;
       for (let d = e.dots.length - 1; d >= 0; d--) {
         const dot = e.dots[d];
@@ -599,7 +599,7 @@ const Game = {
         e.hp -= dot.dps * dt;
         dotSrc = dot.src || 'priest';
         dot.fxT = (dot.fxT || 0) - dt;
-        if (dot.fxT <= 0) {          // 持续伤害蚕食：低频上浮雾滴（猎人毒绿 / 暗言术紫）
+        if (dot.fxT <= 0) {          // 持续伤害蚕食：低频上浮雾滴（猎人毒绿 / 暗影紫）
           dot.fxT = 0.4;
           FX.burst(e.mesh.position.clone().add(new THREE.Vector3(0, 0.7, 0)),
             dot.src === 'hunter' ? POISON_COLOR : 0xb04ae8,
@@ -643,7 +643,7 @@ const Game = {
       const frac = Utils.clamp(e.hp / e.maxHp, 0, 1);
       e.bar.draw(frac, frac > 0.5 ? 0x3edb5a : frac > 0.25 ? 0xf0c73a : 0xe84a3a);
       e.slowIcon.visible = slowed;
-      // 持续伤害图标随来源变色：猎人毒绿 / 暗言术紫
+      // 持续伤害图标随来源变色：猎人毒绿 / 暗影紫
       e.dotIcon.visible = e.dots.length > 0;
       if (e.dots.length) e.dotIcon.material.color.setHex(
         e.dots.some(d => d.src === 'hunter') ? POISON_COLOR : 0xb04ae8);
@@ -968,7 +968,7 @@ const Game = {
           FX.light(pos, fx.color, { intensity: 1.6 * fx.boost, dist: 4.5 });
           FX.groundGlow(pos, fx.color, 1.2, 0.5);
           if (target.alive) {
-            // 暗言术攻击同样参与暴击：暴击时整段 DoT 总伤害翻倍
+            // 暗影侵蚀攻击同样参与暴击：暴击时整段 DoT 总伤害翻倍
             const crit = Math.random() < CFG.CRIT.chance;
             const total = lv.dot * mult * (crit ? CFG.CRIT.mult : 1);
             target.dots.push({ dps: total / 5, until: this.time + 5, src: 'priest' });
@@ -1060,7 +1060,7 @@ const Game = {
       AudioSys.play('consecrate');
 
     } else if (t.type === 'priest') {
-      // 暗言术：灾：暗影席卷，直伤 + 持续蚕食（沿用普攻 4 层上限）
+      // 暗影灾变：暗影席卷，直伤 + 持续蚕食（沿用普攻 4 层上限）
       FX.pillar(center, fx.color, { radius: 0.8 * fx.boost, height: 5, life: 0.35 });
       FX.groundGlow(center, fx.color, sk.radius * 1.05, 0.7);
       FX.ring(center, fx.color, sk.radius * 1.05, 0.5);
@@ -1108,7 +1108,7 @@ const Game = {
     const nowRoutes = lv.routes || 1;
     if (nowRoutes > prevRoutes) {
       const names = CFG.ROUTES.slice(prevRoutes, nowRoutes).map(r => r.name).join('、');
-      UI.banner(`🚪 ${names}黑暗之门开启！兵分多路来袭！`);
+      UI.banner(`🚪 ${names}传送门开启！兵分多路来袭！`);
       AudioSys.play('boss_horn');
     }
   },

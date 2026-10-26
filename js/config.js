@@ -1,5 +1,5 @@
 /* ============ 游戏数值配置 ============ */
-/* 城墙顶高度（英雄站位所在的墙顶 y，暴风城大门墙体同高） */
+/* 城墙顶高度（英雄站位所在的墙顶 y，王城大门墙体同高） */
 const WALL_H = 3.4;
 
 const CFG = {
@@ -17,7 +17,7 @@ const CFG = {
   GROUND_W: 64, GROUND_D: 44,
   PATH_WIDTH: 2.4,
 
-  // 多路进攻路线：各路独立黑暗之门入场，终点全部汇合到暴风城大门 [24,0]
+  // 多路进攻路线：各路独立传送门入场，终点全部汇合到王城大门 [24,0]
   // 关卡通过 LEVELS[i].routes 决定启用前几条路线
   ROUTES: [
     { name: '西路', path: [
@@ -36,7 +36,7 @@ const CFG = {
   // 相机初始位：城墙斜上空，朝西俯瞰战场（可拖拽旋转 / 右键平移 / 滚轮缩放）
   CAMERA: { target: [18, 2, 0], theta: Math.PI / 2, phi: 0.9, radius: 18 },
 
-  // 4 个英雄站位：暴风城大门城墙顶一字排开（门洞两侧各 2 座，按站位 1→4 从北到南）
+  // 4 个英雄站位：王城大门城墙顶一字排开（门洞两侧各 2 座，按站位 1→4 从北到南）
   // 中间两位须避开城门头横梁（z 半长 2.65），故整体外扩
   PLOTS: [
     [24.4, WALL_H, 4.7], [24.4, WALL_H, 3.5],
@@ -47,7 +47,7 @@ const CFG = {
   // weather: 每波开始时按权重抽取的天气池 [[类型, 权重], ...]；mist: 常驻地面雾强度 0~1
   SCENES: {
     forest: {
-      name: '翠绿林地', desc: '晨光穿过松林，黑暗之门的绿光在林间隐现。',
+      name: '翠绿林地', desc: '晨光穿过松林，幽绿传送门的辉光在林间隐现。',
       ground: 0x5d8f3d, patches: [0x557f36, 0x679a44],
       pathTiles: [0x93866a, 0x9c8f70],
       treeType: 'pine', trees: 26, rocks: 12,
@@ -80,7 +80,7 @@ const CFG = {
       mist: 0
     },
     icecrown: {
-      name: '冰封王座', desc: '永夜降临，寒冰王座之下暴雪呼啸。',
+      name: '冰封之地', desc: '永夜降临，冰封大地之上暴雪呼啸。',
       ground: 0xbfd4e6, patches: [0xa9c2da, 0xd2e2f0],
       pathTiles: [0x7e93a8, 0x8ba0b5],
       treeType: 'ice', trees: 16, rocks: 10,
@@ -156,7 +156,7 @@ const CFG = {
       statLine: l => `伤害 ${l.dmg}　射程 ${l.range}　间隔 ${l.rate}s\n溅射 ${l.splash}　减速 ${Math.round(l.slow*100)}% / ${l.slowDur}s\n减速触发率 ${Math.round(l.slowChance*100)}%`
     },
     hunter: {
-      name: '暗夜精灵猎人', role: '快速单体', icon: '🏹',
+      name: '精灵猎人', role: '快速单体', icon: '🏹',
       clsColor: '#9d7bff',
       desc: '射速极快、射程最远，箭无虚发，单体物理伤害；2 级解锁毒箭，命中使怪物中毒持续掉血。',
       fx: [
@@ -190,10 +190,10 @@ const CFG = {
         { color: 0xfff3c8, boost: 1.5 }
       ],
       levels: [
-        { dmg: 26, range: 5.4, rate: 1.60, stun: 0.4 },
-        { dmg: 48, range: 6.2, rate: 1.45, stun: 0.6 },
-        { dmg: 84, range: 7.2, rate: 1.30, stun: 0.8 },
-        { dmg: 145, range: 8.0, rate: 1.15, stun: 1.0 }
+        { dmg: 26, range: 8.5, rate: 1.60, stun: 0.4 },
+        { dmg: 48, range: 9.5, rate: 1.45, stun: 0.6 },
+        { dmg: 84, range: 10.5, rate: 1.30, stun: 0.8 },
+        { dmg: 145, range: 11.5, rate: 1.15, stun: 1.0 }
       ],
       // 主动群攻技能：大范围圣光冲击 + 长眩晕，伤害 = 当前等级 dmg × dmgMult
       skill: {
@@ -203,9 +203,9 @@ const CFG = {
       statLine: l => `冲击伤害 ${l.dmg}　范围 ${l.range}\n间隔 ${l.rate}s　眩晕 ${l.stun}s`
     },
     priest: {
-      name: '血精灵牧师', role: '暗影辅助', icon: '✨',
+      name: '精灵牧师', role: '暗影辅助', icon: '✨',
       clsColor: '#ff8a8a',
-      desc: '暗言术：痛蚕食敌人；暗影光环使周围友军伤害提升。',
+      desc: '暗影侵蚀蚕食敌人；暗影光环使周围友军伤害提升。',
       fx: [
         { color: 0xb04ae8, boost: 1.0 },
         { color: 0xbd63ec, boost: 1.15 },
@@ -220,10 +220,10 @@ const CFG = {
       ],
       // 主动群攻技能：直伤 = 当前等级 dot × dmgMult，另附 dot × dotMult / 5s 的持续蚕食
       skill: {
-        name: '暗言术：灾', icon: '🔮', cd: 20, radius: 10, dmgMult: 1.5, dotMult: 1.2,
+        name: '暗影灾变', icon: '🔮', cd: 20, radius: 10, dmgMult: 1.5, dotMult: 1.2,
         desc: '暗影能量席卷战场，重创范围内敌人并持续蚕食'
       },
-      statLine: l => `暗言术 ${l.dot} 伤害/5s　射程 ${l.range}\n光环 +${Math.round(l.aura*100)}% 友军伤害（半径 ${l.auraRange}）`
+      statLine: l => `暗影侵蚀 ${l.dot} 伤害/5s　射程 ${l.range}\n光环 +${Math.round(l.aura*100)}% 友军伤害（半径 ${l.auraRange}）`
     }
   },
 
@@ -238,7 +238,7 @@ const CFG = {
   CRIT: { chance: 0.15, mult: 2 },
 
   // ============ 敌人（points 为战绩分数，xp 为击杀者获得的经验） ============
-  // ownLight：模型自带点光（深渊火魔王 / 巫妖王），不再占用怪物夜光灯光池
+  // ownLight：模型自带点光（深渊火魔王 / 亡灵之王），不再占用怪物夜光灯光池
   ENEMIES: {
     murloc:   { name: '鱼人',       hp: 32,   speed: 2.30, points: 8,   xp: 15,  scale: 0.95 },
     boar:     { name: '野猪',       hp: 60,   speed: 1.70, points: 10,  xp: 20,  scale: 1.0  },
@@ -247,7 +247,7 @@ const CFG = {
     orc:      { name: '兽人步兵',   hp: 185,  speed: 1.15, points: 20,  xp: 42,  armor: 0.25, scale: 1.2 },
     lich:     { name: '巫妖',       hp: 560,  speed: 1.05, points: 70,  xp: 165, armor: 0.15, boss: true, scale: 1.35 },
     abyssal:  { name: '深渊火魔王', hp: 1500, speed: 0.85, points: 150, xp: 360, armor: 0.30, boss: true, scale: 1.7, ownLight: true },
-    lichking: { name: '巫妖王',     hp: 3400, speed: 0.75, points: 330, xp: 780,  armor: 0.30, boss: true, scale: 1.9, ownLight: true }
+    lichking: { name: '亡灵之王',     hp: 3400, speed: 0.75, points: 330, xp: 780,  armor: 0.30, boss: true, scale: 1.9, ownLight: true }
   },
 
   // ============ 全局难度强化：所有怪物（含 Boss）血量×1.5、护甲+0.10 ============
@@ -306,8 +306,8 @@ const CFG = {
   LEVELS: [
     { name: '第一关 · 兽人先锋',   from: 1,  to: 5,  scene: 'forest',   routes: 1 },
     { name: '第二关 · 亡灵大军',   from: 6,  to: 10, scene: 'swamp',    routes: 2 },
-    { name: '第三关 · 燃烧军团',   from: 11, to: 15, scene: 'tundra',   routes: 3 },
-    { name: '第四关 · 巫妖王之怒', from: 16, to: 20, scene: 'icecrown', routes: 3 }
+    { name: '第三关 · 恶魔军团',   from: 11, to: 15, scene: 'tundra',   routes: 3 },
+    { name: '第四关 · 亡灵之怒', from: 16, to: 20, scene: 'icecrown', routes: 3 }
   ],
   // 整关通关的积分奖励
   levelBonus(level) { return 60 + level * 40; }

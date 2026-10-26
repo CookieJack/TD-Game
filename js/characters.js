@@ -129,7 +129,7 @@ const Characters = {};
     return g;
   };
 
-  // 暗夜精灵猎人：紫肤 + 绿色皮甲 + 长弓
+  // 精灵猎人：紫肤 + 绿色皮甲 + 长弓
   Characters.buildHunter = function (level) {
     const g = new THREE.Group();
     const skin = MatCache.get(0x8a68b8), armor = MatCache.get(0x3f6b34), dark = MatCache.get(0x2d4d26);
@@ -340,7 +340,7 @@ const Characters = {};
     return g;
   };
 
-  // 血精灵牧师：红白法袍 + 金发 + 暗影法球
+  // 精灵牧师：红白法袍 + 金发 + 暗影法球
   Characters.buildPriest = function (level) {
     const g = new THREE.Group();
     const robe = MatCache.get(0x9e2333), white = MatCache.get(0xe8e2d4);
@@ -735,7 +735,7 @@ const Characters = {};
     return g;
   };
 
-  // 巫妖王（最终 Boss）
+  // 亡灵之王（最终 Boss）
   Characters.buildLichking = function () {
     const g = new THREE.Group();
     const armor = MatCache.get(0x3a3f4a), dark = MatCache.get(0x23262e);
@@ -766,7 +766,7 @@ const Characters = {};
       s.rotation.z = sx > 0 ? -0.3 : 0.3;
       g.add(s);
     }
-    // 霜之哀伤
+    // 冰霜魔剑
     const sword = new THREE.Group();
     sword.add(cyl(0.045, 0.045, 0.7, dark, 0, -0.3, 0, 5));
     sword.add(box(0.14, 0.12, 0.28, bone, 0, 0.08, 0));
