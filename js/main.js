@@ -353,13 +353,46 @@ const Game = {
     return need ? Math.min(this.heroXp[t.type] / need, 1) : 1;
   },
 
+  // 头顶条工厂：整根条（暗底 + 左锚定彩色填充）画进同一张贴图，单 Sprite 渲染——
+  // 任意视角下底板与填充天然重合为一根条，扣血/涨经验从右往左
+  _makeBar(barW, barH, trackColor) {
+    const cv = document.createElement('canvas');
+    cv.width = 128; cv.height = 16;
+    const ctx = cv.getContext('2d');
+    const css = (hex) => '#' + hex.toString(16).padStart(6, '0');
+    const tex = new THREE.CanvasTexture(cv);
+    ctx.fillStyle = css(trackColor);
+    ctx.fillRect(0, 0, 128, 16);
+    tex.needsUpdate = true;
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex }));
+    sprite.scale.set(barW, barH, 1);
+    const group = new THREE.Group();
+    group.add(sprite);
+    let lastFrac = -1, lastColor = 0;
+    return {
+      group,
+      // frac/颜色都没变时跳过重绘（每帧调用无开销）
+      draw(frac, colorHex) {
+        if (frac === lastFrac && colorHex === lastColor) return;
+        lastFrac = frac; lastColor = colorHex;
+        ctx.fillStyle = css(trackColor);
+        ctx.fillRect(0, 0, 128, 16);
+        const w = Math.round(124 * frac);
+        if (w > 0) {
+          ctx.fillStyle = css(colorHex);
+          ctx.fillRect(2, 2, w, 12);
+        }
+        tex.needsUpdate = true;
+      }
+    };
+  },
+
   // 英雄头顶经验条（3D）
   _updateXpBar(t) {
-    if (!t.xpFg) return;
+    if (!t.xpDraw) return;
     const frac = this._xpFrac(t);
     const maxed = t.level >= CFG.TOWERS[t.type].levels.length;
-    t.xpFg.scale.x = Math.max((t.xpBarW - 0.04) * frac, 0.001);
-    t.xpFg.material.color.setHex(maxed || frac >= 1 ? 0xffe98a : 0xffd257);
+    t.xpDraw(frac, maxed || frac >= 1 ? 0xffe98a : 0xffd257);
   },
 
   _spawnTowerMesh(tower) {
@@ -372,20 +405,12 @@ const Game = {
     tower.group = group;
     tower.head = group.userData.head;
 
-    // 头顶经验条（暗底金条一体：底板与填充同点渲染，任意视角都重合为一条，满级隐藏）
-    const barW = 0.9;
-    const bg = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0x2a2115 }));
-    bg.scale.set(barW, 0.13, 1);
-    const fg = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0xffd257 }));
-    fg.scale.set(barW - 0.04, 0.075, 1);
-    fg.renderOrder = 1;   // 填充条盖在底板上
-    const bar = new THREE.Group();
-    bar.add(bg, fg);
-    bar.position.y = 2.85;
-    group.add(bar);
-    tower.xpBar = bar;
-    tower.xpFg = fg;
-    tower.xpBarW = barW;
+    // 头顶经验条（单贴图条：暗底金条画在同一张贴图里，左锚定，满级隐藏）
+    const bar = this._makeBar(0.9, 0.13, 0x2a2115);
+    bar.group.position.y = 2.85;
+    group.add(bar.group);
+    tower.xpBar = bar.group;
+    tower.xpDraw = bar.draw;
     this._updateXpBar(tower);
   },
 
@@ -522,18 +547,12 @@ const Game = {
     World.pulsePortal(route);   // 传送门光晕脉冲 + 出怪粒子
     FX.burst(new THREE.Vector3(p.x, 1.6, p.z), 0x6effa0, { count: 8, speed: 2.5, life: 0.5, gravity: 0 });
 
-    // 头顶血条（暗底彩条一体：底板与填充同点渲染，任意视角都重合为一条）
-    const bar = new THREE.Group();
+    // 头顶血条（单贴图条：暗底 + 彩色填充画在同一张贴图里，任意视角都是一条，扣血从右往左）
     const bw = cfg.boss ? 1.7 : elite ? 1.35 : 1.0;
-    const bg = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0x38100e }));
-    bg.scale.set(bw, 0.16, 1);
-    const fg = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0x3edb5a }));
-    fg.scale.set(bw - 0.06, 0.1, 1);
-    fg.renderOrder = 1;   // 填充条盖在底板上
-    bar.add(bg, fg);
-    bar.position.y = mesh.userData.height + 0.55;
-    if (cfg.boss) bar.scale.setScalar(1.15);
-    mesh.add(bar);
+    const hpBar = this._makeBar(bw, 0.16, 0x38100e);
+    if (cfg.boss) hpBar.group.scale.setScalar(1.15);
+    hpBar.group.position.y = mesh.userData.height + 0.55;
+    mesh.add(hpBar.group);
 
     // 状态图标（雪花 = 减速；光点 = 持续伤害：暗言术紫 / 毒箭绿）
     const slowIcon = FX.makeSnow(0xbfe6ff, 0.55);
@@ -555,7 +574,7 @@ const Game = {
     mesh.add(halo);
 
     this.enemies.push({
-      type, cfg, mesh, barBg: bg, barFg: fg, barW: bw,
+      type, cfg, mesh, bar: hpBar,
       hp: hp, maxHp: hp,
       armor, elite,
       track, progress: 0,        // progress = dist/track.length，跨路线可比（索敌用）
@@ -622,8 +641,7 @@ const Game = {
       }
       // 血条与状态图标
       const frac = Utils.clamp(e.hp / e.maxHp, 0, 1);
-      e.barFg.scale.x = Math.max((e.barW - 0.06) * frac, 0.001);
-      e.barFg.material.color.setHex(frac > 0.5 ? 0x3edb5a : frac > 0.25 ? 0xf0c73a : 0xe84a3a);
+      e.bar.draw(frac, frac > 0.5 ? 0x3edb5a : frac > 0.25 ? 0xf0c73a : 0xe84a3a);
       e.slowIcon.visible = slowed;
       // 持续伤害图标随来源变色：猎人毒绿 / 暗言术紫
       e.dotIcon.visible = e.dots.length > 0;
