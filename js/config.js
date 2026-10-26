@@ -5,7 +5,7 @@ const WALL_H = 3.4;
 const CFG = {
   LIVES: 20,
   START_POINTS: 0,         // 初始积分：击杀 / 波次奖励获得（可在关卡结算画面购买经验）
-  TOTAL_WAVES: 20,
+  TOTAL_WAVES: 40,
   WAVE_BREAK: 14,          // 波次间隔秒数（可提前召唤拿奖励）
 
   // 英雄经验：击杀者获得怪物 xp；经验条满自动升级（need 为升到 2/3/4 级所需）
@@ -272,26 +272,50 @@ const CFG = {
   // ============ 波次（多组并行：type, count, gap 秒, delay 秒后开始）
   // route: 该组从哪条路进攻（0 西 / 1 北 / 2 南）；缺省时按当前关路线数轮转分配
   WAVES: [
-    [ { type: 'murloc', count: 6, gap: 1.2, delay: 0 } ],
-    [ { type: 'murloc', count: 8, gap: 1.0, delay: 0 }, { type: 'boar', count: 2, gap: 1.6, delay: 4 } ],
-    [ { type: 'boar', count: 6, gap: 1.4, delay: 0 }, { type: 'murloc', count: 5, gap: 0.9, delay: 2 } ],
-    [ { type: 'ghoul', count: 6, gap: 1.3, delay: 0 }, { type: 'boar', count: 4, gap: 1.5, delay: 1 } ],
-    [ { type: 'ghoul', count: 6, gap: 1.2, delay: 0 }, { type: 'gargoyle', count: 5, gap: 1.0, delay: 4 } ],
-    [ { type: 'gargoyle', count: 8, gap: 0.9, delay: 0, route: 0 }, { type: 'murloc', count: 8, gap: 0.8, delay: 2, route: 1 } ],
-    [ { type: 'orc', count: 4, gap: 2.0, delay: 0, route: 0 }, { type: 'boar', count: 6, gap: 1.2, delay: 3, route: 1 } ],
-    [ { type: 'ghoul', count: 10, gap: 1.0, delay: 0, route: 0 }, { type: 'gargoyle', count: 6, gap: 1.0, delay: 2, route: 1 } ],
-    [ { type: 'orc', count: 6, gap: 1.8, delay: 0, route: 0 }, { type: 'ghoul', count: 8, gap: 1.0, delay: 1, route: 1 } ],
-    [ { type: 'murloc', count: 8, gap: 0.8, delay: 0, route: 1 }, { type: 'lich', count: 1, gap: 1, delay: 5, route: 0 } ],
-    [ { type: 'orc', count: 8, gap: 1.6, delay: 0, route: 0 }, { type: 'gargoyle', count: 6, gap: 0.9, delay: 2, route: 1 } ],
-    [ { type: 'boar', count: 12, gap: 1.0, delay: 0, route: 0 }, { type: 'ghoul', count: 10, gap: 1.0, delay: 1, route: 2 } ],
-    [ { type: 'orc', count: 8, gap: 1.5, delay: 0, route: 0 }, { type: 'gargoyle', count: 8, gap: 0.9, delay: 2, route: 1 } ],
-    [ { type: 'ghoul', count: 14, gap: 0.9, delay: 0, route: 0 }, { type: 'orc', count: 6, gap: 1.6, delay: 3, route: 2 } ],
-    [ { type: 'orc', count: 8, gap: 1.4, delay: 0, route: 1 }, { type: 'abyssal', count: 1, gap: 1, delay: 6, route: 0 } ],
-    [ { type: 'gargoyle', count: 12, gap: 0.8, delay: 0, route: 0 }, { type: 'murloc', count: 12, gap: 0.6, delay: 1, route: 2 } ],
-    [ { type: 'orc', count: 12, gap: 1.3, delay: 0, route: 0 }, { type: 'ghoul', count: 12, gap: 0.9, delay: 2, route: 1 } ],
-    [ { type: 'gargoyle', count: 10, gap: 0.8, delay: 0, route: 0 }, { type: 'orc', count: 8, gap: 1.4, delay: 2, route: 1 }, { type: 'ghoul', count: 10, gap: 0.9, delay: 4, route: 2 } ],
-    [ { type: 'orc', count: 14, gap: 1.2, delay: 0, route: 0 }, { type: 'gargoyle', count: 8, gap: 0.8, delay: 2, route: 1 }, { type: 'ghoul', count: 12, gap: 0.8, delay: 4, route: 2 } ],
-    [ { type: 'ghoul', count: 10, gap: 0.9, delay: 0, route: 1 }, { type: 'gargoyle', count: 6, gap: 0.8, delay: 3, route: 2 }, { type: 'lichking', count: 1, gap: 1, delay: 8, route: 0 } ]
+    // —— 第一关 · 兽人先锋（1-10 波，西路单线）——
+    [ { type: 'murloc', count: 8, gap: 1.1, delay: 0 } ],
+    [ { type: 'murloc', count: 10, gap: 0.9, delay: 0 }, { type: 'boar', count: 3, gap: 1.5, delay: 4 } ],
+    [ { type: 'boar', count: 8, gap: 1.3, delay: 0 }, { type: 'murloc', count: 7, gap: 0.8, delay: 2 } ],
+    [ { type: 'ghoul', count: 8, gap: 1.2, delay: 0 }, { type: 'boar', count: 6, gap: 1.4, delay: 1 } ],
+    [ { type: 'ghoul', count: 8, gap: 1.1, delay: 0 }, { type: 'gargoyle', count: 7, gap: 0.9, delay: 4 } ],
+    [ { type: 'gargoyle', count: 10, gap: 0.8, delay: 0 }, { type: 'murloc', count: 10, gap: 0.7, delay: 2 } ],
+    [ { type: 'orc', count: 6, gap: 1.8, delay: 0 }, { type: 'boar', count: 8, gap: 1.1, delay: 3 } ],
+    [ { type: 'ghoul', count: 12, gap: 0.9, delay: 0 }, { type: 'gargoyle', count: 8, gap: 0.9, delay: 2 } ],
+    [ { type: 'orc', count: 8, gap: 1.6, delay: 0 }, { type: 'ghoul', count: 10, gap: 0.9, delay: 1 } ],
+    [ { type: 'murloc', count: 10, gap: 0.7, delay: 0 }, { type: 'lich', count: 1, gap: 1, delay: 5 } ],
+    // —— 第二关 · 亡灵大军（11-20 波，西 + 北两线）——
+    [ { type: 'orc', count: 10, gap: 1.5, delay: 0, route: 0 }, { type: 'gargoyle', count: 8, gap: 0.9, delay: 2, route: 1 } ],
+    [ { type: 'boar', count: 14, gap: 0.9, delay: 0, route: 0 }, { type: 'ghoul', count: 12, gap: 0.9, delay: 1, route: 1 } ],
+    [ { type: 'orc', count: 10, gap: 1.4, delay: 0, route: 0 }, { type: 'gargoyle', count: 10, gap: 0.8, delay: 2, route: 1 } ],
+    [ { type: 'ghoul', count: 16, gap: 0.8, delay: 0, route: 0 }, { type: 'orc', count: 8, gap: 1.5, delay: 3, route: 1 } ],
+    [ { type: 'murloc', count: 16, gap: 0.6, delay: 0, route: 1 }, { type: 'boar', count: 12, gap: 1.0, delay: 2, route: 0 } ],
+    [ { type: 'gargoyle', count: 14, gap: 0.8, delay: 0, route: 0 }, { type: 'murloc', count: 14, gap: 0.6, delay: 1, route: 1 } ],
+    [ { type: 'orc', count: 14, gap: 1.2, delay: 0, route: 0 }, { type: 'ghoul', count: 14, gap: 0.8, delay: 2, route: 1 } ],
+    [ { type: 'gargoyle', count: 12, gap: 0.8, delay: 0, route: 0 }, { type: 'orc', count: 10, gap: 1.3, delay: 2, route: 1 }, { type: 'ghoul', count: 12, gap: 0.8, delay: 4, route: 0 } ],
+    [ { type: 'orc', count: 16, gap: 1.1, delay: 0, route: 0 }, { type: 'gargoyle', count: 10, gap: 0.8, delay: 2, route: 1 }, { type: 'ghoul', count: 14, gap: 0.8, delay: 4, route: 1 } ],
+    [ { type: 'orc', count: 10, gap: 1.2, delay: 0, route: 1 }, { type: 'ghoul', count: 10, gap: 0.8, delay: 3, route: 0 }, { type: 'abyssal', count: 1, gap: 1, delay: 6, route: 0 } ],
+    // —— 第三关 · 恶魔军团（21-30 波，西 + 北 + 南三线）——
+    [ { type: 'orc', count: 16, gap: 1.1, delay: 0, route: 0 }, { type: 'gargoyle', count: 12, gap: 0.8, delay: 2, route: 1 } ],
+    [ { type: 'ghoul', count: 18, gap: 0.8, delay: 0, route: 1 }, { type: 'boar', count: 14, gap: 1.0, delay: 2, route: 2 } ],
+    [ { type: 'gargoyle', count: 16, gap: 0.8, delay: 0, route: 0 }, { type: 'orc', count: 12, gap: 1.3, delay: 2, route: 1 }, { type: 'murloc', count: 16, gap: 0.6, delay: 3, route: 2 } ],
+    [ { type: 'orc', count: 18, gap: 1.1, delay: 0, route: 0 }, { type: 'ghoul', count: 16, gap: 0.8, delay: 2, route: 2 } ],
+    [ { type: 'gargoyle', count: 18, gap: 0.7, delay: 0, route: 1 }, { type: 'ghoul', count: 16, gap: 0.8, delay: 2, route: 0 }, { type: 'orc', count: 12, gap: 1.2, delay: 4, route: 2 } ],
+    [ { type: 'boar', count: 20, gap: 0.8, delay: 0, route: 0 }, { type: 'ghoul', count: 18, gap: 0.8, delay: 1, route: 1 }, { type: 'gargoyle', count: 12, gap: 0.8, delay: 3, route: 2 } ],
+    [ { type: 'orc', count: 20, gap: 1.0, delay: 0, route: 0 }, { type: 'gargoyle', count: 14, gap: 0.8, delay: 2, route: 1 }, { type: 'ghoul', count: 16, gap: 0.8, delay: 3, route: 2 } ],
+    [ { type: 'gargoyle', count: 20, gap: 0.7, delay: 0, route: 0 }, { type: 'orc', count: 16, gap: 1.0, delay: 2, route: 1 }, { type: 'boar', count: 16, gap: 0.9, delay: 3, route: 2 } ],
+    [ { type: 'ghoul', count: 22, gap: 0.7, delay: 0, route: 1 }, { type: 'orc', count: 18, gap: 1.0, delay: 2, route: 2 }, { type: 'gargoyle', count: 16, gap: 0.7, delay: 4, route: 0 } ],
+    [ { type: 'orc', count: 12, gap: 1.0, delay: 0, route: 1 }, { type: 'lich', count: 2, gap: 4, delay: 3, route: 0 }, { type: 'abyssal', count: 1, gap: 1, delay: 8, route: 2 } ],
+    // —— 第四关 · 亡灵之怒（31-40 波，三线齐攻）——
+    [ { type: 'orc', count: 20, gap: 1.0, delay: 0, route: 0 }, { type: 'gargoyle', count: 18, gap: 0.7, delay: 2, route: 1 }, { type: 'ghoul', count: 18, gap: 0.7, delay: 4, route: 2 } ],
+    [ { type: 'gargoyle', count: 22, gap: 0.7, delay: 0, route: 1 }, { type: 'orc', count: 18, gap: 1.0, delay: 2, route: 0 }, { type: 'murloc', count: 20, gap: 0.5, delay: 3, route: 2 } ],
+    [ { type: 'ghoul', count: 24, gap: 0.6, delay: 0, route: 2 }, { type: 'orc', count: 20, gap: 0.9, delay: 2, route: 0 }, { type: 'boar', count: 18, gap: 0.8, delay: 4, route: 1 } ],
+    [ { type: 'orc', count: 24, gap: 0.9, delay: 0, route: 0 }, { type: 'gargoyle', count: 18, gap: 0.7, delay: 2, route: 2 }, { type: 'ghoul', count: 20, gap: 0.7, delay: 4, route: 1 } ],
+    [ { type: 'lich', count: 2, gap: 5, delay: 0, route: 1 }, { type: 'ghoul', count: 18, gap: 0.7, delay: 3, route: 0 }, { type: 'gargoyle', count: 16, gap: 0.7, delay: 5, route: 2 } ],
+    [ { type: 'gargoyle', count: 24, gap: 0.6, delay: 0, route: 0 }, { type: 'orc', count: 20, gap: 0.9, delay: 2, route: 1 }, { type: 'murloc', count: 22, gap: 0.5, delay: 4, route: 2 } ],
+    [ { type: 'orc', count: 26, gap: 0.9, delay: 0, route: 0 }, { type: 'ghoul', count: 22, gap: 0.7, delay: 2, route: 1 }, { type: 'gargoyle', count: 18, gap: 0.7, delay: 4, route: 2 } ],
+    [ { type: 'abyssal', count: 2, gap: 8, delay: 0, route: 0 }, { type: 'orc', count: 16, gap: 1.0, delay: 3, route: 1 }, { type: 'gargoyle', count: 14, gap: 0.8, delay: 5, route: 2 } ],
+    [ { type: 'ghoul', count: 26, gap: 0.6, delay: 0, route: 1 }, { type: 'orc', count: 22, gap: 0.9, delay: 2, route: 2 }, { type: 'gargoyle', count: 20, gap: 0.6, delay: 4, route: 0 }, { type: 'boar', count: 20, gap: 0.7, delay: 6, route: 1 } ],
+    [ { type: 'orc', count: 14, gap: 1.0, delay: 0, route: 1 }, { type: 'ghoul', count: 14, gap: 0.7, delay: 2, route: 2 }, { type: 'lich', count: 2, gap: 6, delay: 5, route: 0 }, { type: 'abyssal', count: 1, gap: 1, delay: 12, route: 2 }, { type: 'lichking', count: 1, gap: 1, delay: 18, route: 0 } ]
   ],
 
   // 波次血量成长
@@ -301,13 +325,13 @@ const CFG = {
   // 通关波次奖励
   waveBonus(wave) { return 12 + wave * 3; },
 
-  // ============ 关卡（20 波拆为 4 关，打完一关暂停结算再开下一关）
+  // ============ 关卡（40 波拆为 4 关，每关 10 波，打完一关暂停结算再开下一关）
   // scene: SCENES 主题；routes: 启用前几条进攻路线（1/2/3）
   LEVELS: [
-    { name: '第一关 · 兽人先锋',   from: 1,  to: 5,  scene: 'forest',   routes: 1 },
-    { name: '第二关 · 亡灵大军',   from: 6,  to: 10, scene: 'swamp',    routes: 2 },
-    { name: '第三关 · 恶魔军团',   from: 11, to: 15, scene: 'tundra',   routes: 3 },
-    { name: '第四关 · 亡灵之怒', from: 16, to: 20, scene: 'icecrown', routes: 3 }
+    { name: '第一关 · 兽人先锋',   from: 1,  to: 10, scene: 'forest',   routes: 1 },
+    { name: '第二关 · 亡灵大军',   from: 11, to: 20, scene: 'swamp',    routes: 2 },
+    { name: '第三关 · 恶魔军团',   from: 21, to: 30, scene: 'tundra',   routes: 3 },
+    { name: '第四关 · 亡灵之怒', from: 31, to: 40, scene: 'icecrown', routes: 3 }
   ],
   // 整关通关的积分奖励
   levelBonus(level) { return 60 + level * 40; }

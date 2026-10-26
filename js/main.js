@@ -478,7 +478,7 @@ const Game = {
     const w = CFG.WEATHER[Env.weather];
     const wx = `　${w.icon} ${w.label}`;
 
-    const bossNames = { 10: '巫妖', 15: '深渊火魔王', 20: '亡灵之王' };
+    const bossNames = { 10: '巫妖', 20: '深渊火魔王', 30: '巫妖与深渊火魔王', 40: '亡灵之王' };
     if (bossNames[this.state.wave]) {
       UI.banner(`⚔ 第 ${this.state.wave} 波 — ${bossNames[this.state.wave]} 现身！${wx}`, true);
       AudioSys.play('boss_horn');
