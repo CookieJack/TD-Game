@@ -250,6 +250,12 @@ const CFG = {
     lichking: { name: '巫妖王',     hp: 3400, speed: 0.75, points: 330, xp: 780,  armor: 0.30, boss: true, scale: 1.9, ownLight: true }
   },
 
+  // ============ 全局难度强化：所有怪物（含 Boss）血量×1.5、护甲+0.10 ============
+  ENEMY_BUFF: { hpMult: 1.5, armorAdd: 0.10 },
+
+  // ============ 精英怪：每个小怪组末尾追加 1 只，血量/护甲为强化后普通小怪的 2 倍 ============
+  ELITE: { hpMult: 2, armorMult: 2, scale: 1.15, haloColor: 0xff3a2a, haloOpacity: 0.55, haloScale: 2.2 },
+
   // ============ 怪物夜光（黑夜出怪可见 + 照亮周围地面） ============
   // 灯光为常驻池（intensity 0，避免运行时增删触发 shader 重编译），按出怪顺序分配给前 pool 只怪；
   // intensity 按 Env.night 缩放：白天极弱、黑夜全亮。halo 为挂在怪物身上的加色光晕贴片缩放

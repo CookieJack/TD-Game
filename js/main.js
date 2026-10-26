@@ -372,14 +372,13 @@ const Game = {
     tower.group = group;
     tower.head = group.userData.head;
 
-    // 头顶经验条（暗底金条，满级隐藏）
+    // 头顶经验条（暗底金条一体：底板与填充同点渲染，任意视角都重合为一条，满级隐藏）
     const barW = 0.9;
     const bg = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0x2a2115 }));
     bg.scale.set(barW, 0.13, 1);
     const fg = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0xffd257 }));
-    fg.center.set(0, 0.5);
-    fg.position.x = -barW / 2 + 0.02;
     fg.scale.set(barW - 0.04, 0.075, 1);
+    fg.renderOrder = 1;   // 填充条盖在底板上
     const bar = new THREE.Group();
     bar.add(bg, fg);
     bar.position.y = 2.85;
@@ -438,6 +437,10 @@ const Game = {
       for (let i = 0; i < grp.count; i++) {
         this.spawnQueue.push({ type: grp.type, at: grp.delay + i * grp.gap, mult, route });
       }
+      // 精英怪：小怪组末尾压阵 1 只（Boss 组不加）
+      if (!CFG.ENEMIES[grp.type].boss) {
+        this.spawnQueue.push({ type: grp.type, at: grp.delay + grp.count * grp.gap, mult, route, elite: true });
+      }
     }
     this.spawnQueue.sort((a, b) => a.at - b.at);
     this.waveClock = 0;
@@ -473,7 +476,7 @@ const Game = {
     this.waveClock += dt;
     while (this.spawnQueue.length && this.spawnQueue[0].at <= this.waveClock) {
       const s = this.spawnQueue.shift();
-      this._spawnEnemy(s.type, s.mult, s.route || 0);
+      this._spawnEnemy(s.type, s.mult, s.route || 0, s.elite);
     }
     // 波次通关判定
     if (!this.spawnQueue.length && !this.enemies.length) {
@@ -502,11 +505,16 @@ const Game = {
   },
 
   /* ================= 敌人 ================= */
-  _spawnEnemy(type, mult, route = 0) {
+  _spawnEnemy(type, mult, route = 0, elite = false) {
     const cfg = CFG.ENEMIES[type];
+    // 全局难度强化 + 精英倍率（护甲存实例：cfg 为共享配置，各怪 armor 不同）
+    const buff = CFG.ENEMY_BUFF;
+    const hp = cfg.hp * mult * buff.hpMult * (elite ? CFG.ELITE.hpMult : 1);
+    const armor = Math.min(1, ((cfg.armor || 0) + buff.armorAdd) * (elite ? CFG.ELITE.armorMult : 1));
+    const scale = cfg.scale * (elite ? CFG.ELITE.scale : 1);
     const mesh = Characters.buildEnemy(type);
-    mesh.scale.setScalar(cfg.scale);
-    mesh.userData.baseScale = cfg.scale;
+    mesh.scale.setScalar(scale);
+    mesh.userData.baseScale = scale;
     const track = World.tracks[route] || World.tracks[0];
     const p = track.pointAt(0);
     mesh.position.set(p.x, cfg.flying ? 2.4 : 0, p.z);
@@ -514,15 +522,14 @@ const Game = {
     World.pulsePortal(route);   // 传送门光晕脉冲 + 出怪粒子
     FX.burst(new THREE.Vector3(p.x, 1.6, p.z), 0x6effa0, { count: 8, speed: 2.5, life: 0.5, gravity: 0 });
 
-    // 头顶血条
+    // 头顶血条（暗底彩条一体：底板与填充同点渲染，任意视角都重合为一条）
     const bar = new THREE.Group();
-    const bw = cfg.boss ? 1.7 : 1.0;
+    const bw = cfg.boss ? 1.7 : elite ? 1.35 : 1.0;
     const bg = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0x38100e }));
     bg.scale.set(bw, 0.16, 1);
     const fg = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0x3edb5a }));
-    fg.center.set(0, 0.5);
-    fg.position.x = -bw / 2 + 0.03;
     fg.scale.set(bw - 0.06, 0.1, 1);
+    fg.renderOrder = 1;   // 填充条盖在底板上
     bar.add(bg, fg);
     bar.position.y = mesh.userData.height + 0.55;
     if (cfg.boss) bar.scale.setScalar(1.15);
@@ -538,16 +545,19 @@ const Game = {
     dotIcon.visible = false;
     mesh.add(dotIcon);
 
-    // 夜光光晕：加色贴片随本体移动，死亡时随 mesh 一起移除
+    // 夜光光晕：加色贴片随本体移动，死亡时随 mesh 一起移除（精英为专属红色大光晕）
     const glowCfg = CFG.ENEMY_GLOW;
-    const halo = FX.makeGlow(glowCfg.colors[type] || glowCfg.color, cfg.boss ? glowCfg.haloBoss : glowCfg.halo, 1.0);
-    halo.material.opacity = glowCfg.haloOpacity;
+    const halo = elite
+      ? FX.makeGlow(CFG.ELITE.haloColor, CFG.ELITE.haloScale, 1.0)
+      : FX.makeGlow(glowCfg.colors[type] || glowCfg.color, cfg.boss ? glowCfg.haloBoss : glowCfg.halo, 1.0);
+    halo.material.opacity = elite ? CFG.ELITE.haloOpacity : glowCfg.haloOpacity;
     halo.position.y = (mesh.userData.height || 1.2) * 0.55;
     mesh.add(halo);
 
     this.enemies.push({
       type, cfg, mesh, barBg: bg, barFg: fg, barW: bw,
-      hp: cfg.hp * mult, maxHp: cfg.hp * mult,
+      hp: hp, maxHp: hp,
+      armor, elite,
       track, progress: 0,        // progress = dist/track.length，跨路线可比（索敌用）
       dist: 0, alive: true,
       slowUntil: 0, slowFactor: 0, stunUntil: 0, dots: [],
@@ -627,7 +637,7 @@ const Game = {
     if (!e.alive) return;
     const crit = Math.random() < CFG.CRIT.chance;
     if (crit) amount *= CFG.CRIT.mult;
-    const dmg = amount * (1 - (e.cfg.armor || 0));
+    const dmg = amount * (1 - (e.armor || 0));
     e.hp -= dmg;
     FX.punch(e.mesh);
     this._damageText(e, dmg, crit);
